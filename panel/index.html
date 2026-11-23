@@ -236,6 +236,9 @@
   .tag-live i { width: 4px; height: 4px; border-radius: 50%; background: var(--accent); }
   .tag-live.error { color: #ffc2c9; }
   .tag-live.error i { background: var(--danger); }
+  .tag-live.warn i { background: var(--warn); }
+  .tag-live.pending i { background: var(--muted-2); }
+  .tag-live.pending { color: var(--muted); }
   .eq { position: absolute; left: 8px; bottom: 8px; display: none; gap: 2px; align-items: flex-end; height: 12px; z-index: 2; }
   .eq i { width: 3px; border-radius: 2px; background: var(--accent); animation: eq 0.9s ease-in-out infinite; }
   .eq i:nth-child(2) { animation-delay: 0.15s; }
@@ -530,6 +533,12 @@
   function escapeHtml(value) {
     return String(value == null ? '' : value).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
+  function statusTag(status) {
+    if (status === 'error') return { label: 'DOWN', cls: 'error' };
+    if (status === 'stale') return { label: 'LIVE', cls: 'warn' };
+    if (status === 'pending') return { label: 'SYNC', cls: 'pending' };
+    return { label: 'LIVE', cls: '' };
+  }
   function initials(name) {
     const parts = String(name || '?').replace(/[^\p{L}\p{N}\s&+]/gu, ' ').trim().split(/\s+/).filter(Boolean);
     if (!parts.length) return 'TV';
@@ -607,10 +616,11 @@
         }
         const dot = metaRow.querySelector('.cdot');
         if (dot) dot.className = `cdot ${channel.status || 'pending'}`;
-        const tag = card.querySelector('.tag-live');
-        if (tag) {
-          tag.classList.toggle('error', channel.status === 'error');
-          tag.innerHTML = `<i></i>${channel.status === 'error' ? 'DOWN' : 'LIVE'}`;
+        const tagElement = card.querySelector('.tag-live');
+        if (tagElement) {
+          const tag = statusTag(channel.status);
+          tagElement.className = `tag-live ${tag.cls}`;
+          tagElement.innerHTML = `<i></i>${tag.label}`;
         }
         if (state.current && state.current.id === channel.id) state.current = channel;
       }
@@ -658,11 +668,12 @@
       const quality = (channel.qualities || []).slice(-1)[0] || '';
       const isSd = quality && !/720|1080/.test(quality);
       const status = channel.status || 'pending';
+      const tag = statusTag(status);
       button.innerHTML = `
         <div class="thumb">
           <span class="initials">${escapeHtml(initials(channel.name))}</span>
           ${channel.logo ? `<img src="${escapeHtml(channel.logo)}" alt="" loading="lazy" decoding="async" onerror="this.style.display='none'">` : ''}
-          <span class="tag-live ${status === 'error' ? 'error' : ''}"><i></i>${status === 'error' ? 'DOWN' : 'LIVE'}</span>
+          <span class="tag-live ${tag.cls}"><i></i>${tag.label}</span>
           <span class="fav ${state.favorites.has(channel.id) ? 'on' : ''}" data-fav="${escapeHtml(channel.id)}" role="button" tabindex="-1" aria-label="Toggle favorite">★</span>
           <span class="eq" aria-hidden="true"><i></i><i></i><i></i></span>
         </div>

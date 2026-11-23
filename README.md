@@ -175,6 +175,7 @@ Everything is environment-driven; see `.env.example` for the annotated list.
 | `HOT_WARM_MS` / `HOT_WARM_LIMIT` | `60000` / `40` | pre-warm playlists of channels being watched |
 | `SEGMENT_MODE` | `redirect` | `redirect` (0 Mbps) · `direct` · `proxy` |
 | `WATCH_CHANNELS` | `true` | reload the list when the file changes |
+| `EXCLUDED_GROUPS` | — | comma-separated group names to hide from the panel/playlist |
 | `LOG_LEVEL` / `LOG_FORMAT` | `info` / `text` | `debug`, `warn`, `error`, or `json` |
 
 ### Choosing a segment mode
@@ -206,7 +207,7 @@ concurrency 24 (`node server.js`, Docker-ready build):
 | Segment bytes through the relay | 0 in `redirect` / `direct` |
 | Output ladder | exactly `720p` then `1080p` (or one best rung for SD-only sources) |
 | Output audio | Bangla `DEFAULT=YES` + Hindi `AUTOSELECT=YES`, nothing else |
-| Test suite | 38 tests, ~1.3 s (`npm test`) |
+| Test suite | 39 tests, ~1.6 s (`npm test`) |
 
 HLS.js still decides when to jump to 1080p (ABR), because transcoding is off and
 the relay must not lie about the bitrate. The start is pinned to 720p, which is
@@ -218,7 +219,7 @@ what removes the ABR ladder-decision delay from the click path.
 
 ```bash
 npm test
-# 38 tests: manifest filtering, audio policy, URL rewriting, 302 signing,
+# 39 tests: manifest filtering, audio policy, URL rewriting, 302 signing,
 # direct/proxy modes, token injection, fallback, panel serving.
 
 npm run demo

@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 
 import { parseChannelList } from '../lib/channels.js';
 import { loadConfig } from '../lib/config.js';
+import { createLogger } from '../lib/logger.js';
+import { Upstream } from '../lib/upstream.js';
 
 test('parses extinf attributes, groups, provider ids and headers', () => {
   const text = `#EXTM3U
@@ -86,4 +88,14 @@ test('config defaults are high-only, redirect-mode and fast', () => {
 
 test('invalid segment mode falls back to redirect', () => {
   assert.equal(loadConfig({ SEGMENT_MODE: 'raw' }).segmentMode, 'redirect');
+});
+
+test('upstream URLs are high-only, even for hand-written channel URLs', () => {
+  const upstream = new Upstream(loadConfig({ UPSTREAM_BASE: 'http://up:8080' }), createLogger({ level: 'error' }));
+  assert.equal(upstream.masterUrl({ id: 'x', providerId: '101' }, 'high'), 'http://up:8080/live/high/101.m3u8');
+  assert.equal(upstream.masterUrl({ id: 'x', providerId: '101' }, 'auto'), 'http://up:8080/live/101.m3u8');
+  assert.equal(upstream.masterUrl({ id: 'a', customUrl: 'http://cdn/live/low/123.m3u8' }, 'high'), 'http://cdn/live/high/123.m3u8');
+  assert.equal(upstream.masterUrl({ id: 'b', customUrl: 'http://cdn/live/medium/9.m3u8?q=1' }, 'high'), 'http://cdn/live/high/9.m3u8?q=1');
+  assert.equal(upstream.masterUrl({ id: 'c', customUrl: 'http://cdn/live/high/9.m3u8' }, 'high'), 'http://cdn/live/high/9.m3u8');
+  assert.equal(upstream.masterUrl({ id: 'd', customUrl: 'https://cdn.example/{id}/master.m3u8', providerId: '55' }, 'high'), 'https://cdn.example/55/master.m3u8');
 });
