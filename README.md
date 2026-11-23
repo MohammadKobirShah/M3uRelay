@@ -284,6 +284,13 @@ Details that matter in daily use:
   never contains an `auto`/`low`/`medium` or DASH link.
 * **Clean text** — line breaks/control characters are stripped and attributes
   escaped, so a malformed channel name can never split one entry into two.
+* **Read-only paths never stop playback** — if `PLAYLIST_FILE` cannot be written
+  (the image runs as `node`, `/app` is root-owned), the relay tries
+  `<root>/.cache/`, then the OS temp dir, warns **once** with the offending path
+  and keeps serving `/playlist.m3u` from RAM. `/api/status` reports
+  `playlist.file`, `configuredFile`, `fallback`, `warning` and `error`.
+* **An empty list never erases a good file** — a failed sync or a boot before the
+  channels are loaded leaves yesterday's playlist untouched.
 
 ```bash
 # what the server wrote, and what it serves, must match
@@ -359,7 +366,7 @@ concurrency 24 (`node server.js`, Docker-ready build):
 | Segment bytes through the relay | 0 in `redirect` / `direct` |
 | Output ladder | exactly `720p` then `1080p` (or one best rung for SD-only sources) |
 | Output audio | Bangla `DEFAULT=YES` + Hindi `AUTOSELECT=YES`, nothing else |
-| Test suite | 75 tests, ~3.3 s (`npm test`) |
+| Test suite | 79 tests, ~3.5 s (`npm test`) |
 
 HLS.js still decides when to jump to 1080p (ABR), because transcoding is off and
 the relay must not lie about the bitrate. The start is pinned to 720p, which is
@@ -371,7 +378,7 @@ what removes the ABR ladder-decision delay from the click path.
 
 ```bash
 npm test
-# 75 tests: manifest filtering, audio policy, URL rewriting, 302 signing,
+# 79 tests: manifest filtering, audio policy, URL rewriting, 302 signing,
 # direct/proxy modes, token injection, fallback, panel serving.
 
 npm run demo
@@ -433,8 +440,10 @@ or simply set `PUBLIC_URL=https://tv.example.com`.
 | Only 720p, no 1080p | The origin's high endpoint has no 1080p rung for that channel — it is not being hidden from you. |
 | Autoplay blocked | Browser policy: click Resume. Muted autoplay is intentionally not used. |
 | `docker compose up` says channels.m3u is a directory | The bind mount expects the file to exist in the compose directory. Restore it from git. |
+| Env change has no effect after `git pull` | Compose only recreates a container when its config changes: `docker compose up -d --force-recreate` (after `docker compose build`). |
 | Everything 404s behind a sub-path | Set `PUBLIC_URL` (or serve at the domain root). |
-| Generated playlist missing | `PLAYLIST_FILE` is empty (disabled directory) or its directory is not writable. `/api/status` → `playlist.error` says why. |
+| `EACCES: permission denied, open '/app/channels.generated.m3u.tmp'` | The image runs as `node` (uid 1000) and `/app` belongs to root, so the default relative path is read-only. The relay now writes to the first writable location (`/app/.cache/`, then the temp dir) and logs where once. Fix it properly with `docker compose up -d --force-recreate` (compose sets `PLAYLIST_FILE=/app/.cache/playlist.m3u`) or set `PLAYLIST_FILE` to another writable path. `GET /api/status` → `playlist.file` shows the real path. |
+| Generated playlist missing | `PLAYLIST_FILE` is empty (playlist disabled) or nothing was writable. `/api/status` → `playlist.error` / `playlist.warning` says why. |
 | Playlist URLs point at `localhost` | Set `PUBLIC_URL=https://your-domain` — the on-disk file uses it for every entry. |
 
 ---

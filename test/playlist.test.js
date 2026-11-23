@@ -8,6 +8,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { buildPlaylist, playlistEtag, PlaylistFile } from '../lib/playlist.js';
+import { Relay } from '../lib/relay.js';
+import { loadConfig } from '../lib/config.js';
 import { startMockOrigin } from '../scripts/mock-origin.js';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -161,6 +163,163 @@ test('PlaylistFile keeps the last good file when the channel list is empty and c
   playlist.stop();
   assert.equal(playlist.timer, null);
 
+  await fs.rm(root, { recursive: true, force: true });
+});
+
+/**
+ * `chmod 0555` only blocks writes for an unprivileged process. When the suite
+ * runs as root nothing is unwritable, so those tests skip instead of lying.
+ */
+async function lockDir(dir) {
+  const probe = path.join(dir, 'probe.txt');
+  await fs.chmod(dir, 0o555);
+  try {
+    await fs.writeFile(probe, 'x');
+    await fs.chmod(dir, 0o755);
+    await fs.rm(probe, { force: true });
+    return false;
+  } catch {
+    return true;
+  }
+}
+
+test('PlaylistFile falls back to a writable path when PLAYLIST_FILE is read-only', async (t) => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'm3urelay-ro-'));
+  const locked = path.join(root, 'app');
+  await fs.mkdir(locked);
+  const warnings = [];
+  const logger = { ...silentLogger, warn: (message) => warnings.push(message) };
+  const configured = path.join(locked, 'channels.generated.m3u');
+  const playlist = new PlaylistFile({
+    config: { playlistFile: configured, playlistRefreshMs: 60000 },
+    logger,
+    root,
+    getChannels: () => SAMPLE,
+    getUpdatedAt: () => 7,
+    origin: () => 'https://relay.example',
+  });
+
+  if (!(await lockDir(locked)) || !(await lockDir(locked))) {
+    t.diagnostic('skipped: running as root, every directory is writable');
+    await fs.rm(root, { recursive: true, force: true });
+    t.skip('cannot make a directory read-only as root');
+    return;
+  }
+
+  const text = await playlist.write();
+  const snapshot = playlist.snapshot();
+  assert.ok(text, 'a writable fallback must produce the playlist');
+  assert.equal(snapshot.configuredFile, configured);
+  assert.equal(snapshot.fallback, true);
+  assert.equal(snapshot.file, path.join(root, '.cache', 'channels.generated.m3u'));
+  assert.equal(snapshot.error, null);
+  assert.match(snapshot.warning, /not writable/);
+  assert.match(snapshot.warning, /PLAYLIST_FILE/);
+  assert.equal(await fs.readFile(snapshot.file, 'utf8'), text);
+  assert.equal(snapshot.channels, 2);
+
+  // the warning is logged once, not on every refresh
+  await playlist.write();
+  const matches = warnings.filter((line) => line.includes('not writable'));
+  assert.equal(matches.length, 1, `expected one warning, got ${warnings.length}: ${warnings.join(' | ')}`);
+
+  await fs.chmod(locked, 0o755);
+  await fs.rm(root, { recursive: true, force: true });
+});
+
+test('PlaylistFile reports an error instead of crashing when nothing is writable', async (t) => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'm3urelay-ro-'));
+  const locked = path.join(root, 'app');
+  await fs.mkdir(locked);
+  if (!(await lockDir(locked))) {
+    t.diagnostic('skipped: running as root, every directory is writable');
+    await fs.rm(root, { recursive: true, force: true });
+    t.skip('cannot make a directory read-only as root');
+    return;
+  }
+  const warnings = [];
+  const playlist = new PlaylistFile({
+    config: { playlistFile: path.join(locked, 'list.m3u'), playlistRefreshMs: 0 },
+    logger: { ...silentLogger, warn: (message) => warnings.push(message) },
+    root: locked, // .cache fallback also lands in the read-only tree…
+    getChannels: () => SAMPLE,
+  });
+  // …and the temp-dir candidate is redirected to the same locked tree
+  playlist.candidates = playlist.candidates.map((file) => {
+    if (file.startsWith(os.tmpdir()) && file.includes('m3urelay-')) return path.join(locked, path.basename(file));
+    return file;
+  });
+
+  assert.equal(await playlist.write(), null);
+  const snapshot = playlist.snapshot();
+  assert.match(snapshot.error, /EACCES|EPERM|EROFS/);
+  assert.equal(snapshot.generatedAt, null);
+  assert.equal(warnings.length, 1, 'a permanent failure is logged once');
+  assert.match(warnings[0], /PLAYLIST_FILE/);
+
+  await playlist.write();
+  assert.equal(warnings.length, 1, 'the interval must not spam the log');
+  await fs.chmod(locked, 0o755);
+  await fs.rm(root, { recursive: true, force: true });
+});
+
+test('PlaylistFile never blanks a good file when the channel list is empty', async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'm3urelay-empty-'));
+  const file = path.join(root, 'list.m3u');
+  let channels = SAMPLE;
+  const playlist = new PlaylistFile({
+    config: { playlistFile: file, playlistRefreshMs: 0 },
+    logger: silentLogger,
+    root,
+    getChannels: () => channels,
+  });
+  await playlist.write();
+  const good = await fs.readFile(file, 'utf8');
+
+  channels = []; // e.g. a failed sync or a boot before the list is loaded
+  await playlist.write();
+  assert.equal(await fs.readFile(file, 'utf8'), good);
+  assert.equal(playlist.snapshot().channels, 2);
+
+  await fs.rm(root, { recursive: true, force: true });
+});
+
+test('channel cache falls back to the temp dir and ignores empty lists', async (t) => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'm3urelay-cache-'));
+  const locked = path.join(root, 'app');
+  await fs.mkdir(locked);
+  if (!(await lockDir(locked))) {
+    t.diagnostic('skipped: running as root, every directory is writable');
+    await fs.rm(root, { recursive: true, force: true });
+    t.skip('cannot make a directory read-only as root');
+    return;
+  }
+  const cacheFile = path.join(locked, 'channels.cache.m3u');
+  const fallback = path.join(os.tmpdir(), `m3urelay-${path.basename(cacheFile)}`);
+  await fs.rm(fallback, { force: true });
+
+  const warnings = [];
+  const relay = new Relay({
+    config: loadConfig({ CHANNELS_FILE: path.join(root, 'channels.m3u'), CHANNELS_CACHE_FILE: cacheFile, WATCH_CHANNELS: 'false' }),
+    logger: { ...silentLogger, warn: (message) => warnings.push(message) },
+    upstream: {},
+  });
+
+  await relay.writeCachedPlaylist('');
+  assert.equal(relay.cacheFallback, undefined, 'empty text must not be cached at all');
+
+  const text = '#EXTM3U\n#EXTINF:-1,News\nhigh://news\n';
+  await relay.writeCachedPlaylist(text);
+  assert.equal(relay.cacheFallback, fallback);
+  assert.equal(await fs.readFile(fallback, 'utf8'), text);
+  assert.equal(warnings.length, 1);
+  assert.match(warnings[0], /CHANNELS_CACHE_FILE/);
+
+  await relay.writeCachedPlaylist(text);
+  assert.equal(warnings.length, 1, 'the fallback warning is logged once');
+
+  await fs.rm(fallback, { force: true });
+  await fs.chmod(locked, 0o755);
   await fs.rm(root, { recursive: true, force: true });
 });
 

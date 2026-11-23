@@ -793,7 +793,17 @@ async function main() {
     if (config.channelsUrl) logger.info(`sync       ${config.channelsUrl}${config.channelsRefreshMs ? ` every ${config.channelsRefreshMs}ms` : ''}`);
     if (config.upstreamBase) logger.info(`upstream   ${config.upstreamBase}${config.upstreamHighPath}`);
     if (playlistFile.state.enabled) {
-      logger.info(`playlist   file ${playlistFile.state.file} (every ${config.playlistRefreshMs}ms)`);
+      logger.info(`playlist   file ${playlistFile.configuredFile} (every ${config.playlistRefreshMs}ms)`);
+      // The first write happens in the background; report where it actually
+      // landed, because a read-only /app makes the relay fall back.
+      playlistFile.write().then((text) => {
+        const state = playlistFile.state;
+        if (text && state.file !== playlistFile.configuredFile) {
+          logger.info(`playlist   actual file ${state.file} (configured path is read-only)`);
+        } else if (!text && state.error) {
+          logger.warn(`playlist   not written: ${state.error}`);
+        }
+      });
     }
   });
 

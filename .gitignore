@@ -13,4 +13,6 @@ demo-media/
 channels.cache.m3u
 # auto-generated player playlist (PLAYLIST_FILE)
 channels.generated.m3u
+# fallback location when the configured path is not writable
+.cache/
 tmp/
