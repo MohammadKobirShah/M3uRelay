@@ -393,6 +393,13 @@ test('channel list syncs from the upstream playlist (JioTV-Go style)', async (t)
   const sdMaster = await (await fetch(`${relay.base}/live/high/sd.m3u8`)).text();
   assert.equal((sdMaster.match(/#EXT-X-STREAM-INF/g) || []).length, 1);
 
+  // The DASH/Widevine entry is flagged and served through its HLS twin.
+  const enc = channels.channels.find((channel) => channel.id === 'enc');
+  assert.equal(enc.dash, true);
+  const encMaster = await fetch(`${relay.base}/live/high/enc.m3u8`);
+  assert.equal(encMaster.status, 200);
+  assert.match(await encMaster.text(), /#EXT-X-STREAM-INF/);
+
   const master = await (await fetch(`${relay.base}/live/high/news.m3u8`)).text();
   assert.equal((master.match(/#EXT-X-STREAM-INF/g) || []).length, 2);
   assert.match(master, /RESOLUTION=1280x720/);
@@ -471,6 +478,8 @@ test('the probe endpoint explains a working channel source', async (t) => {
   assert.equal(probe.ok, true);
   assert.equal(probe.playlist.channels, 3);
   assert.equal(probe.playlist.duplicates, 0);
+  assert.equal(probe.playlist.quality.dash, 1);
+  assert.ok(probe.findings.some((finding) => finding.code === 'dash-channels'));
   assert.ok(probe.dns.addresses.length >= 1);
   assert.equal(probe.http.status, 200);
   assert.ok(probe.http.ms >= 0);

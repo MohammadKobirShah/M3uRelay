@@ -5,6 +5,7 @@
  *   node scripts/import-m3u.js provider.m3u [channels.m3u] [--force]
  *
  * - /live/low/, /live/medium/ and /live/auto/ URLs are rewritten to /live/high/
+ * - JioTV-Go DRM entries (/live/mpd/<id>?q=high) are mapped to their HLS twin
  * - JioTV-Go style /live/high/<id>.m3u8 URLs become `high://<id>` (id-based,
  *   so the token always stays fresh in the warmer)
  * - anything else is kept as an absolute URL
@@ -53,12 +54,15 @@ const ID_PATTERNS = [
 function normalize(url) {
   return String(url || '')
     .replace(/\/live\/(low|medium|auto)\//i, '/live/high/')
-    .replace(/\/live\/(low|medium|auto)(?=[/?#]|$)/i, '/live/high');
+    .replace(/\/live\/(low|medium|auto)(?=[/?#]|$)/i, '/live/high')
+    // DASH/Widevine entry -> the HLS endpoint that JioTV-Go also serves.
+    .replace(/\/live\/mpd\/([^/?#]+)(?:\?[^#]*)?/i, '/live/high/$1.m3u8');
 }
 
 let fromIds = 0;
 let fromUrls = 0;
 let rewritten = 0;
+let dashMapped = 0;
 
 const lines = [
   '#EXTM3U',
@@ -73,7 +77,10 @@ for (const channel of channels) {
 
   if (customUrl) {
     const normalized = normalize(customUrl);
-    if (normalized !== customUrl) rewritten += 1;
+    if (normalized !== customUrl) {
+      rewritten += 1;
+      if (/\/live\/mpd\//i.test(customUrl)) dashMapped += 1;
+    }
     customUrl = normalized;
     if (!providerId) {
       for (const pattern of ID_PATTERNS) {
@@ -109,6 +116,7 @@ await fs.writeFile(output, `${lines.join('\n')}\n`);
 console.log(`imported ${fromIds + fromUrls} channels into ${output}`);
 console.log(`  ${fromIds} id-based (high://…)   ${fromUrls} absolute URL`);
 if (rewritten) console.log(`  ${rewritten} low/medium/auto URLs rewritten to /live/high/`);
+if (dashMapped) console.log(`  ${dashMapped} DRM (DASH) channels mapped to their HLS endpoint`);
 if (duplicates.length) console.log(`  ${duplicates.length} duplicate channel ids skipped`);
 console.log('next: set UPSTREAM_BASE (if using high:// ids) and restart the relay');
 

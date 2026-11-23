@@ -23,6 +23,8 @@ services:
       CHANNELS_REFRESH_MS: ${CHANNELS_REFRESH_MS:-0}
       CHANNELS_CACHE_FILE: /app/.cache/channels.m3u
       HIGH_FIRST_CUSTOM_URLS: ${HIGH_FIRST_CUSTOM_URLS:-true}
+      DASH_TO_HLS: ${DASH_TO_HLS:-true}
+      SKIP_DASH: ${SKIP_DASH:-false}
       UPSTREAM_BASE: ${UPSTREAM_BASE:-}
       UPSTREAM_HIGH_PATH: ${UPSTREAM_HIGH_PATH:-/live/high/{id}.m3u8}
       UPSTREAM_AUTO_PATH: ${UPSTREAM_AUTO_PATH:-/live/{id}.m3u8}

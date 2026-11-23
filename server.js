@@ -511,12 +511,30 @@ async function handleDebugManifest(req, res, id) {
       channelId: channel.id,
       endpoint: fetched.endpoint,
       source: fetched.url,
+      dash: Boolean(channel.dash),
       plan: describePlan(plan),
       variants: plan.variants.map((variant) => ({ key: variant.key, uri: variant.uri, height: variant.height })),
       audio: plan.audio.map((track) => ({ key: track.key, name: track.name, lang: track.lang, uri: track.uri })),
     });
   } catch (error) {
-    sendError(req, res, error);
+    // Say what was tried — the usual question is "which URL did you fetch?".
+    let attempted = [];
+    try {
+      attempted = channel.customUrl
+        ? upstream.customUrlCandidates(channel)
+        : [upstream.masterUrl(channel, 'high')];
+    } catch {
+      attempted = [];
+    }
+    sendJson(req, res, error.status || 502, {
+      channelId: channel.id,
+      error: error.message,
+      dash: Boolean(channel.dash),
+      attempted,
+      hint: channel.dash
+        ? 'JioTV-Go lists this channel as DASH/Widevine; the relay tried its HLS twin.'
+        : undefined,
+    });
   }
 }
 

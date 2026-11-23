@@ -51,6 +51,11 @@ docker compose up -d
 - **চ্যানেলের নাম বাংলায়** — সময় টিভি, দীপ্ত টিভি, স্টার জলসা… (ম্যাপে থাকা ~৯০টি
   চ্যানেল)। সার্চ বাংলায়ও কাজ করে — `সময়` বা `সময়টিভি` লিখলেই Somoy TV আসে।
   গ্রুপ চিপগুলোও বাংলায়: বাংলা সংবাদ, বাংলা বিনোদন, খেলাধুলা…
+- **HLS বনাম DASH** — JioTV Go DRM চ্যানেলগুলো `/live/mpd/<id>?q=high` (DASH/Widevine)
+  হিসেবে দেয়, বাকিগুলো `/live/high/<id>.m3u8`। এই রিলে HLS-only, তাই MPD এন্ট্রির
+  জন্য **HLS সংস্করণ** (`/live/high/<id>.m3u8`) চেষ্টা করে; যেগুলোর HLS নেই সেগুলো
+  কার্ডে `DASH` ব্যাজ নিয়ে বন্ধ দেখায়। সার্ভারে `JIOTV_DRM=false` দিলে প্লেলিস্টেই
+  সব HLS লিংক আসবে, তখন সব চ্যানেল চলবে।
 - **“উৎস” বাটন** — হেডারে `উৎস` চাপলেই দেখা যায় লিস্ট কোথা থেকে আসছে, শেষ সিঙ্ক কখন,
   কতটি চ্যানেল, কী এরর। সেখানে **সংযোগ পরীক্ষা** চাপলে DNS/IP, HTTP স্ট্যাটাস,
   রেসপন্স টাইম আর প্লেলিস্টের গঠন বাংলায় দেখায় — সার্ভারে পৌঁছাচ্ছে কি না সেটাই
@@ -145,6 +150,7 @@ templates are also accepted. Editing `channels.m3u` on disk hot-reloads the list
 | Bangla search | matches the Bangla name, the English name, the id and the group — with or without spaces |
 | Source sheet | header **উৎস** button: active source, last sync, channel count, last error, **Sync now** |
 | Connection probe | inside the sheet: DNS, IP, HTTP status, response time, playlist shape and Bangla findings |
+| DASH badge | cards whose upstream entry is DASH/Widevine show a `DASH` chip (the relay is trying their HLS twin) |
 | Quality switch | Auto (720p start, upgrades to 1080p) / 720p / 1080p |
 | Audio switch | Bangla default, Hindi backup |
 | Picture-in-Picture | button appears where supported |
@@ -156,6 +162,31 @@ Player config is the PRD's fast-start profile: `maxBufferLength: 2`,
 `maxMaxBufferLength: 4`, `startLevel: 0`, `capLevelToPlayerSize: false`,
 `lowLatencyMode: false`, `testBandwidth: false`,
 `manifestLoadingMaxRetry: 20` with a 500 ms delay.
+
+---
+
+## JioTV-Go: HLS and DASH
+
+JioTV-Go publishes two kinds of URLs in `/playlist.m3u?q=high`:
+
+| Upstream entry | What it is | What the relay does |
+| --- | --- | --- |
+| `https://host/live/high/<id>.m3u8` | plain HLS, already high-only | fetched as-is |
+| `https://host/live/mpd/<id>?q=high` | DASH + Widevine (`#KODIPROP` blocks) | rewrites to `https://host/live/high/<id>.m3u8` and tries that (`DASH_TO_HLS=true`) |
+
+A DRM-marked channel usually still has an HLS endpoint, so the rewrite recovers
+many of them; the ones without HLS simply show **DOWN** with a `DASH` badge.
+If you want a pure HLS playlist, run JioTV-Go with `JIOTV_DRM=false` (its own
+env var) — then every entry is `/live/high/<id>.m3u8`.
+
+```bash
+# see exactly what your server publishes, before touching the relay
+curl -s 'http://SERVER:5001/playlist.m3u?q=high' | grep -c '/live/mpd/'
+curl -s 'http://SERVER:5001/playlist.m3u?q=high' | grep -c '/live/high/'
+```
+
+`SKIP_DASH=true` hides DASH-marked channels from the panel/playlist entirely
+instead of trying their HLS twin.
 
 ---
 
@@ -227,6 +258,9 @@ Everything is environment-driven; see `.env.example` for the annotated list.
 | `CHANNELS_URL_TIMEOUT_MS` | `8000` | timeout for the channel-list fetch |
 | `CHANNELS_URL_HEADERS` | — | JSON headers for the channel-list fetch |
 | `HIGH_FIRST_CUSTOM_URLS` | `true` | promote `/live/<id>.m3u8` to `/live/high/<id>.m3u8` |
+| `DASH_TO_HLS` | `true` | map JioTV-Go `/live/mpd/<id>` (DASH/Widevine) entries to `/live/high/<id>.m3u8` |
+| `SKIP_DASH` | `false` | drop DASH-marked channels instead of trying their HLS twin |
+| `PROBE_ALLOW_ANY_URL` | `false` | let `/api/probe?url=` check hosts other than the configured source |
 | `WARMER_ENABLED` / `WARMER_INTERVAL_MS` / `WARMER_CONCURRENCY` | `true` / `2000` / `24` | warmer loop |
 | `CACHE_TTL_MS` / `STALE_SERVE_MS` | `2500` / `15000` | fresh window + stale-while-revalidate window |
 | `MEDIA_CACHE_TTL_MS` | `1200` | variant playlist micro-cache |
@@ -265,7 +299,7 @@ concurrency 24 (`node server.js`, Docker-ready build):
 | Segment bytes through the relay | 0 in `redirect` / `direct` |
 | Output ladder | exactly `720p` then `1080p` (or one best rung for SD-only sources) |
 | Output audio | Bangla `DEFAULT=YES` + Hindi `AUTOSELECT=YES`, nothing else |
-| Test suite | 53 tests, ~1.8 s (`npm test`) |
+| Test suite | 57 tests, ~1.8 s (`npm test`) |
 
 HLS.js still decides when to jump to 1080p (ABR), because transcoding is off and
 the relay must not lie about the bitrate. The start is pinned to 720p, which is
@@ -277,7 +311,7 @@ what removes the ABR ladder-decision delay from the click path.
 
 ```bash
 npm test
-# 53 tests: manifest filtering, audio policy, URL rewriting, 302 signing,
+# 57 tests: manifest filtering, audio policy, URL rewriting, 302 signing,
 # direct/proxy modes, token injection, fallback, panel serving.
 
 npm run demo
@@ -349,7 +383,7 @@ or simply set `PUBLIC_URL=https://tv.example.com`.
 server.js               HTTP routes, panel hosting, 302 signing
 lib/manifest.js         pure HLS parser → quality/audio filters → renderer
 lib/relay.js            RAM caches, 24/7 warmer, hot-channel warming
-lib/upstream.js         high-first upstream client, tokens, timeouts
+lib/upstream.js         high-first upstream client, DASH→HLS mapping, tokens, timeouts
 lib/channels.js         M3U channel list parser
 lib/bangla.js           Bangla channel names, group labels, search aliases
 lib/probe.js            channel-source diagnostics (DNS/HTTP/playlist)

@@ -285,6 +285,10 @@
   }
   .card-meta { display: flex; align-items: center; gap: 6px; font-size: 10px; color: var(--muted-2); min-width: 0; }
   .card-meta .grp { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+  .badge-dash {
+    font-size: 9px; font-weight: 800; letter-spacing: 0.06em; padding: 1px 5px; border-radius: 5px;
+    color: #fbbf24; background: rgba(251, 191, 36, 0.14); border: 1px solid rgba(251, 191, 36, 0.3);
+  }
   .qbadge {
     font-size: 9px; font-weight: 800; letter-spacing: 0.02em; padding: 2px 5px; border-radius: 4px;
     background: var(--accent-soft); color: #8ff0cd; white-space: nowrap; flex: none;
@@ -543,6 +547,7 @@
       sourceProbe: 'সংযোগ পরীক্ষা',
       sourceHint: 'Docker-এর ভেতরে লোকাল নাম রিজলভ না হলে compose-এ extra_hosts দিন, নয়তো হোস্ট-নেটওয়ার্ক ব্যবহার করুন।',
       sourceNoUrl: 'CHANNELS_URL সেট করা নেই',
+      dashHint: 'আপস্ট্রিমে DASH/Widevine — রিলে এর HLS সংস্করণ চেষ্টা করছে',
       kindUrl: 'সরাসরি সার্ভার থেকে',
       kindCache: 'সংরক্ষিত কপি (সার্ভারে পৌঁছানো যাচ্ছে না)',
       kindFile: 'channels.m3u ফাইল',
@@ -631,6 +636,7 @@
       sourceProbe: 'Test connection',
       sourceHint: 'If a LAN hostname does not resolve inside Docker, add extra_hosts to compose or use host networking.',
       sourceNoUrl: 'CHANNELS_URL is not set',
+      dashHint: 'DASH/Widevine on the upstream — the relay is trying its HLS twin',
       kindUrl: 'live from your server',
       kindCache: 'cached copy (server unreachable)',
       kindFile: 'channels.m3u file',
@@ -923,6 +929,7 @@
       channel.groupBn,
       channel.language,
       channel.id,
+      channel.dash ? 'dash widevine mpd' : null,
     ]
       .filter(Boolean)
       .join(' ')
@@ -974,6 +981,7 @@
             <span class="cdot ${status}"></span>
             <span class="grp">${escapeHtml(channelGroupLabel(channel))}</span>
             ${quality ? `<span class="qbadge ${isSd ? 'sd' : ''}">${escapeHtml(quality)}</span>` : ''}
+            ${channel.dash ? `<span class="badge-dash" title="${escapeHtml(t('dashHint'))}">DASH</span>` : ''}
           </span>
         </div>`;
       fragment.appendChild(button);
