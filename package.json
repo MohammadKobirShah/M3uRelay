@@ -1,0 +1,31 @@
+{
+  "name": "m3urelay",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Manifest-only HLS relay: pre-warmed high-only manifests, 720p/1080p ladder, Bangla-first audio, direct CDN segments",
+  "main": "server.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "test": "node --test test/*.test.js",
+    "demo": "node scripts/demo.js",
+    "demo:origin": "node scripts/mock-origin.js",
+    "test:unit": "node --test test/manifest.test.js test/channels.test.js",
+    "test:integration": "node --test test/integration.test.js",
+    "import": "node scripts/import-m3u.js",
+    "demo:build-media": "bash scripts/build-demo-media.sh"
+  },
+  "keywords": [
+    "hls",
+    "iptv",
+    "m3u8",
+    "relay",
+    "manifest",
+    "jio-tv"
+  ],
+  "license": "Apache-2.0"
+}
