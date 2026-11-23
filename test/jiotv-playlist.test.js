@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs/promises';
 
 import { parseChannelList } from '../lib/channels.js';
 import { banglaChannelName, banglaGroupName } from '../lib/bangla.js';
@@ -94,4 +95,16 @@ test('common JioTV-Go channel names get Bangla names', () => {
   }
   // Nothing is invented for names we do not know.
   assert.equal(banglaChannelName('Random Channel 42'), null);
+});
+
+test('the shipped channels.m3u is HLS-only', async () => {
+  const text = await fs.readFile(new URL('../channels.m3u', import.meta.url), 'utf8');
+  const { channels } = parseChannelList(text, { defaultGroup: 'Other' });
+  assert.ok(channels.length >= 100, `expected a full channel list, got ${channels.length}`);
+  assert.equal(channels.filter((channel) => channel.dash).length, 0, 'no DASH entries left');
+  const notHls = channels.filter(
+    (channel) => !channel.customUrl || !/^https?:\/\/[^/]+\/live\/high\/[^/?#]+\.m3u8/i.test(channel.customUrl),
+  );
+  assert.deepEqual(notHls.map((channel) => channel.name), [], 'every stream URL must be /live/high/<id>.m3u8');
+  assert.ok(channels.every((channel) => channel.group && channel.logo !== undefined));
 });

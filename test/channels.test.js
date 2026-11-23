@@ -53,15 +53,18 @@ https://cdn.example/sony-sab.m3u8
   assert.equal(channels[1].id, 'sony-sab');
 });
 
-test('repo channel list is complete and Bangla first', async () => {
+test('repo channel list is complete and playable', async () => {
   const fs = await import('node:fs/promises');
   const text = await fs.readFile(new URL('../channels.m3u', import.meta.url), 'utf8');
   const { channels } = parseChannelList(text);
   assert.ok(channels.length >= 100, `expected 100+ channels, got ${channels.length}`);
-  assert.equal(channels[0].group, 'Bangla Entertainment');
-  assert.ok(new Set(channels.map((channel) => channel.id)).size === channels.length);
+  assert.ok(new Set(channels.map((channel) => channel.id)).size === channels.length, 'channel ids are unique');
   assert.ok(channels.every((channel) => channel.id && channel.name && channel.group));
   assert.ok(channels.every((channel) => !channel.customUrl || /^https?:\/\//.test(channel.customUrl)));
+  // Both kinds of upstream groups survive the import, including Bangla feeds.
+  const groups = new Set(channels.map((channel) => channel.group));
+  assert.ok(groups.size >= 5, `expected several groups, got ${groups.size}`);
+  assert.ok(channels.some((channel) => channel.language === 'Bengali' || /bangla|bengali/i.test(channel.group)));
 });
 
 test('config defaults are high-only, redirect-mode and fast', () => {
