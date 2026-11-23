@@ -48,6 +48,13 @@ docker compose up -d
 - **অডিও** — বাংলা ডিফল্ট, হিন্দি ব্যাকআপ; **কোয়ালিটি** — শুধু 720p (শুরু) আর 1080p।
 - **ব্যান্ডউইথ** — ভিডিও সেগমেন্ট কখনো সার্ভার দিয়ে যায় না, প্লেয়ার সরাসরি CDN
   থেকে 302 রিডাইরেক্টে নেয়। ১০০ চ্যানেল চালালেও সেগমেন্ট ট্রাফিক 0 Mbps।
+- **চ্যানেলের নাম বাংলায়** — সময় টিভি, দীপ্ত টিভি, স্টার জলসা… (ম্যাপে থাকা ~৯০টি
+  চ্যানেল)। সার্চ বাংলায়ও কাজ করে — `সময়` বা `সময়টিভি` লিখলেই Somoy TV আসে।
+  গ্রুপ চিপগুলোও বাংলায়: বাংলা সংবাদ, বাংলা বিনোদন, খেলাধুলা…
+- **“উৎস” বাটন** — হেডারে `উৎস` চাপলেই দেখা যায় লিস্ট কোথা থেকে আসছে, শেষ সিঙ্ক কখন,
+  কতটি চ্যানেল, কী এরর। সেখানে **সংযোগ পরীক্ষা** চাপলে DNS/IP, HTTP স্ট্যাটাস,
+  রেসপন্স টাইম আর প্লেলিস্টের গঠন বাংলায় দেখায় — সার্ভারে পৌঁছাচ্ছে কি না সেটাই
+  এখানে বোঝা যায়। **এখনই সিঙ্ক** নতুন চ্যানেল সঙ্গে সঙ্গে আনবে।
 
 > প্যানেল/প্লেলিস্ট লিংক: `http://সার্ভার-IP:3000/`, `…/playlist.m3u?q=high`,
 > `…/api/status`। VLC / TiviMate-এ প্লেলিস্ট লিংক বসিয়ে টিভিতেও চালানো যায়।
@@ -134,6 +141,10 @@ templates are also accepted. Editing `channels.m3u` on disk hot-reloads the list
 | Favorites | `localStorage`, star on each card |
 | Last channel auto-play | restores on load, shows a Resume button if autoplay is blocked |
 | Language | Bangla by default, `EN` toggle in the header (`m3ip.lang`) |
+| Bangla names | ~90 popular channels get a Bangla title and group label; unknown names keep the source text |
+| Bangla search | matches the Bangla name, the English name, the id and the group — with or without spaces |
+| Source sheet | header **উৎস** button: active source, last sync, channel count, last error, **Sync now** |
+| Connection probe | inside the sheet: DNS, IP, HTTP status, response time, playlist shape and Bangla findings |
 | Quality switch | Auto (720p start, upgrades to 1080p) / 720p / 1080p |
 | Audio switch | Bangla default, Hindi backup |
 | Picture-in-Picture | button appears where supported |
@@ -179,7 +190,8 @@ Player config is the PRD's fast-start profile: `maxBufferLength: 2`,
 | `GET /k?u=…&sig=…` | AES-128 key proxy (cached in RAM) |
 | `GET /api/channels` | channel JSON with live status, ladder, audio tracks |
 | `GET /api/channels/<id>` | one channel + parsed filter plan |
-| `GET /api/status` | warmer, cache and counter telemetry (open the panel footer link) |
+| `GET /api/status` | warmer, cache and counter telemetry, including `channelsSource` |
+| `GET /api/probe[?url=…]` | DNS + HTTP + playlist diagnostics for the channel source (the panel's “সংযোগ পরীক্ষা”) |
 | `GET /api/debug/channel?id=<id>` | fetches the origin live and shows exactly what was kept/dropped |
 | `POST /api/reload` | re-read `CHANNELS_FILE` / re-sync `CHANNELS_URL` |
 | `POST /api/sync` | same as `/api/reload`, returns the active source + channel count |
@@ -211,6 +223,7 @@ Everything is environment-driven; see `.env.example` for the annotated list.
 | `CHANNELS_FILE` | `channels.m3u` | channel list (hot-reloaded) |
 | `CHANNELS_URL` | — | fetch the list from your JioTV-Go server (takes precedence; file is the fallback) |
 | `CHANNELS_REFRESH_MS` | `0` | re-sync interval for `CHANNELS_URL` (0 = boot only / `/api/sync`) |
+| `CHANNELS_CACHE_FILE` | `channels.cache.m3u` | last good playlist, reused when the server is unreachable (empty disables) |
 | `CHANNELS_URL_TIMEOUT_MS` | `8000` | timeout for the channel-list fetch |
 | `CHANNELS_URL_HEADERS` | — | JSON headers for the channel-list fetch |
 | `HIGH_FIRST_CUSTOM_URLS` | `true` | promote `/live/<id>.m3u8` to `/live/high/<id>.m3u8` |
@@ -252,7 +265,7 @@ concurrency 24 (`node server.js`, Docker-ready build):
 | Segment bytes through the relay | 0 in `redirect` / `direct` |
 | Output ladder | exactly `720p` then `1080p` (or one best rung for SD-only sources) |
 | Output audio | Bangla `DEFAULT=YES` + Hindi `AUTOSELECT=YES`, nothing else |
-| Test suite | 41 tests, ~1.8 s (`npm test`) |
+| Test suite | 53 tests, ~1.8 s (`npm test`) |
 
 HLS.js still decides when to jump to 1080p (ABR), because transcoding is off and
 the relay must not lie about the bitrate. The start is pinned to 720p, which is
@@ -264,7 +277,7 @@ what removes the ABR ladder-decision delay from the click path.
 
 ```bash
 npm test
-# 41 tests: manifest filtering, audio policy, URL rewriting, 302 signing,
+# 53 tests: manifest filtering, audio policy, URL rewriting, 302 signing,
 # direct/proxy modes, token injection, fallback, panel serving.
 
 npm run demo
@@ -321,6 +334,7 @@ or simply set `PUBLIC_URL=https://tv.example.com`.
 | --- | --- |
 | Panel loads, manifests 502 | `UPSTREAM_BASE` wrong, upstream needs headers (`UPSTREAM_HEADERS`) or a token (`TOKEN_URL`). Check `/api/debug/channel?id=<id>`. |
 | Manifest fine, video stuck | Segments 403: the CDN needs headers → switch to `SEGMENT_MODE=proxy` (costs bandwidth), or add the token to segment URLs (`TOKEN_APPEND_SEGMENTS=true`) if your CDN signs by query. |
+| Panel shows the **old** list or none | Open **উৎস** → **সংযোগ পরীক্ষা**. It reports DNS failures, HTTP errors, non-M3U responses and timeouts in Bangla. Inside Docker a LAN name needs an `extra_hosts` entry or host networking. |
 | Channels show **DOWN** | The warmer cannot reach the upstream for that id (wrong id or the channel is offline). `/api/status` shows the last error. |
 | Only 720p, no 1080p | The origin's high endpoint has no 1080p rung for that channel — it is not being hidden from you. |
 | Autoplay blocked | Browser policy: click Resume. Muted autoplay is intentionally not used. |
@@ -337,6 +351,8 @@ lib/manifest.js         pure HLS parser → quality/audio filters → renderer
 lib/relay.js            RAM caches, 24/7 warmer, hot-channel warming
 lib/upstream.js         high-first upstream client, tokens, timeouts
 lib/channels.js         M3U channel list parser
+lib/bangla.js           Bangla channel names, group labels, search aliases
+lib/probe.js            channel-source diagnostics (DNS/HTTP/playlist)
 lib/config.js           env → config
 lib/util.js             base64url, HMAC, URL helpers, concurrency
 panel/index.html        the whole UI (single file, HLS.js bundled in panel/vendor)
@@ -354,6 +370,9 @@ test/                   unit + end-to-end HTTP tests
 - Use this only with sources you are entitled to access. The relay does not break
   DRM, does not store video, and does not implement any provider authentication
   beyond the optional token hook you configure.
+- The channel list is fetched with a conditional GET; a 304 keeps the current list.
+  Every successful fetch is written to `CHANNELS_CACHE_FILE`, so a restart during a
+  network outage still opens the panel with the last known channels.
 - “Ultra fast start” is achieved by caching the manifest and removing rungs, not
   by lowering latency; video may be a few seconds behind live by design
   (`maxBufferLength: 2`).

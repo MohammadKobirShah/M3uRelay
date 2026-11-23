@@ -9,4 +9,6 @@ yarn-error.log*
 coverage/
 .nyc_output/
 demo-media/
+# last good channel list fetched from CHANNELS_URL
+channels.cache.m3u
 tmp/

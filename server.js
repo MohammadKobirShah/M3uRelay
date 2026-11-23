@@ -26,6 +26,7 @@ import {
   sanitizeManifest,
 } from './lib/manifest.js';
 import { groupSummary } from './lib/channels.js';
+import { inferredChannelsUrl, probeChannelSource } from './lib/probe.js';
 import {
   b64urlDecode,
   b64urlEncode,
@@ -402,8 +403,69 @@ function handleChannels(req, res) {
     generatedAt: Date.now(),
     total: channels.length,
     groups: groupSummary(relay.channels),
+    source: relay.channelSource,
+    syncedAt: relay.channelSync.syncedAt || null,
     channels,
   });
+}
+
+async function handleProbe(req, res, url) {
+  const configured = inferredChannelsUrl(config);
+  const requested = url.searchParams.get('url');
+  if (requested && !config.probeAllowAnyUrl && requested !== configured) {
+    sendJson(req, res, 403, {
+      ok: false,
+      findings: [
+        {
+          level: 'error',
+          code: 'probe-locked',
+          en: '/api/probe only checks the configured channel source. Set PROBE_ALLOW_ANY_URL=true to probe arbitrary hosts (only on a trusted network).',
+          bn: '/api/probe শুধু কনফিগার করা চ্যানেল উৎসই দেখে। অন্য হোস্ট দেখতে চাইলে PROBE_ALLOW_ANY_URL=true দিন (শুধু বিশ্বস্ত নেটওয়ার্কে)।',
+        },
+      ],
+    });
+    return;
+  }
+  const target = requested || configured;
+  if (!target) {
+    sendJson(req, res, 400, {
+      ok: false,
+      findings: [
+        {
+          level: 'error',
+          code: 'no-source',
+          en: 'No channel source configured. Set CHANNELS_URL or UPSTREAM_BASE.',
+          bn: 'চ্যানেল উৎস সেট করা নেই। CHANNELS_URL অথবা UPSTREAM_BASE দিন।',
+        },
+      ],
+    });
+    return;
+  }
+  try {
+    const result = await probeChannelSource(target, {
+      headers: config.channelsUrlHeaders,
+      timeoutMs: config.channelsUrlTimeoutMs,
+      hasUpstreamBase: Boolean(config.upstreamBase),
+      userAgent: config.upstreamUa,
+    });
+    result.active = {
+      kind: relay.channelSource,
+      url: config.channelsUrl || null,
+      file: config.channelsFile,
+      cacheFile: config.channelsCacheFile || null,
+    };
+    if (relay.channelSource !== 'url') {
+      result.findings.unshift({
+        level: 'info',
+        code: 'active-file',
+        en: `The relay is currently serving the ${relay.channelSource === 'cache' ? 'cached' : 'local'} channel list, not this URL.`,
+        bn: `রিলে এখন ${relay.channelSource === 'cache' ? 'সংরক্ষিত কপি' : 'লোকাল ফাইল'} থেকে চ্যানেল দিচ্ছে, এই URL থেকে নয়।`,
+      });
+    }
+    sendJson(req, res, 200, result);
+  } catch (error) {
+    sendJson(req, res, 500, { ok: false, url: target, error: error.message, findings: [] });
+  }
 }
 
 function handleStatus(req, res) {
@@ -537,6 +599,10 @@ async function router(req, res) {
   }
   if (pathname === '/api/status') {
     handleStatus(req, res);
+    return;
+  }
+  if (pathname === '/api/probe') {
+    await handleProbe(req, res, url);
     return;
   }
   if ((pathname === '/api/reload' || pathname === '/api/sync') && (req.method === 'POST' || req.method === 'GET')) {

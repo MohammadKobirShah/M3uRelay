@@ -67,6 +67,7 @@ async function startRelay({ origin, env = {}, channels = CHANNELS } = {}) {
       PORT: String(port),
       HOST: '127.0.0.1',
       CHANNELS_FILE: channelsFile,
+      CHANNELS_CACHE_FILE: path.join(dir, 'channels.cache.m3u'),
       UPSTREAM_BASE: origin.url,
       WATCH_CHANNELS: 'false',
       LOG_LEVEL: 'error',
@@ -404,4 +405,117 @@ test('channel list syncs from the upstream playlist (JioTV-Go style)', async (t)
   assert.equal(sync.ok, true);
   assert.equal(sync.source, 'url');
   assert.equal(sync.channels, 3);
+});
+
+test('a downloaded playlist is cached and reused when the upstream is down', async (t) => {
+  const origin = await startMockOrigin({ latencyMs: 5 });
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'm3urelay-cache-'));
+  const cacheFile = path.join(dir, 'channels.cache.m3u');
+  const relay = await startRelay({
+    origin,
+    env: { CHANNELS_URL: `${origin.url}/playlist.m3u?q=high`, CHANNELS_CACHE_FILE: cacheFile },
+  });
+  t.after(async () => {
+    await relay.stop();
+    await origin.close().catch(() => {});
+  });
+
+  const cached = await fs.readFile(cacheFile, 'utf8');
+  assert.match(cached, /#EXTINF/);
+
+  const first = await (await fetch(`${relay.base}/api/sync`, { method: 'POST' })).json();
+  assert.equal(first.ok, true);
+  assert.equal(first.source, 'url');
+
+  await origin.close();
+  const second = await (await fetch(`${relay.base}/api/sync`, { method: 'POST' })).json();
+  assert.equal(second.ok, true);
+  assert.equal(second.source, 'cache');
+  assert.equal(second.channels, 3);
+
+  const status = await (await fetch(`${relay.base}/api/status`)).json();
+  assert.equal(status.channelsSource.kind, 'cache');
+  assert.equal(status.channelsSource.cacheUsed, true);
+  assert.ok(status.channelsSource.syncError);
+  assert.equal(status.channelsSource.cacheFile, cacheFile);
+});
+
+test('conditional sync keeps the list when the upstream answers 304', async (t) => {
+  const origin = await startMockOrigin({ latencyMs: 5 });
+  const relay = await startRelay({ origin, env: { CHANNELS_URL: `${origin.url}/playlist.m3u?q=high` } });
+  t.after(async () => {
+    await relay.stop();
+    await origin.close();
+  });
+
+  const status = await (await fetch(`${relay.base}/api/status`)).json();
+  assert.equal(status.channelsSource.kind, 'url');
+  assert.ok(status.channelsSource.syncedAt > 0);
+  assert.ok(status.channelsSource.bytes > 0);
+  assert.equal(status.channelsSource.etag, '"mock-playlist-v1"');
+
+  const second = await (await fetch(`${relay.base}/api/sync`, { method: 'POST' })).json();
+  assert.equal(second.ok, true);
+  assert.equal(second.channels, 3);
+});
+
+test('the probe endpoint explains a working channel source', async (t) => {
+  const origin = await startMockOrigin({ latencyMs: 5 });
+  const relay = await startRelay({ origin, env: { CHANNELS_URL: `${origin.url}/playlist.m3u?q=high` } });
+  t.after(async () => {
+    await relay.stop();
+    await origin.close();
+  });
+
+  const probe = await (await fetch(`${relay.base}/api/probe`)).json();
+  assert.equal(probe.ok, true);
+  assert.equal(probe.playlist.channels, 3);
+  assert.equal(probe.playlist.duplicates, 0);
+  assert.ok(probe.dns.addresses.length >= 1);
+  assert.equal(probe.http.status, 200);
+  assert.ok(probe.http.ms >= 0);
+  assert.ok(probe.samples.some((sample) => sample.nameBn === 'সময় টিভি'));
+  assert.ok(probe.samples.some((sample) => sample.groupBn === 'বাংলা সংবাদ'));
+  assert.ok(probe.findings.some((finding) => finding.level === 'ok'));
+  assert.ok(probe.findings.every((finding) => typeof finding.bn === 'string' && finding.bn.length > 0));
+});
+
+test('the probe endpoint refuses to scan arbitrary hosts by default', async (t) => {
+  const origin = await startMockOrigin({ latencyMs: 5 });
+  const relay = await startRelay({ origin, env: { CHANNELS_URL: `${origin.url}/playlist.m3u?q=high` } });
+  t.after(async () => {
+    await relay.stop();
+    await origin.close();
+  });
+
+  const response = await fetch(`${relay.base}/api/probe?url=${encodeURIComponent('http://127.0.0.1:1/playlist.m3u')}`);
+  const probe = await response.json();
+  assert.equal(response.status, 403);
+  assert.equal(probe.ok, false);
+  assert.equal(probe.findings[0].code, 'probe-locked');
+  assert.match(probe.findings[0].bn, /[\u0980-\u09FF]/);
+});
+
+test('the probe endpoint describes an unreachable configured source in Bangla', async (t) => {
+  const origin = await startMockOrigin({ latencyMs: 5 });
+  const deadPort = await freePort();
+  const relay = await startRelay({
+    origin,
+    env: { CHANNELS_URL: `http://127.0.0.1:${deadPort}/playlist.m3u` },
+  });
+  t.after(async () => {
+    await relay.stop();
+    await origin.close();
+  });
+
+  const probe = await (await fetch(`${relay.base}/api/probe`)).json();
+  assert.equal(probe.ok, false);
+  const failure = probe.findings.find((finding) => finding.level === 'error');
+  assert.ok(failure, 'expected an error finding');
+  assert.match(failure.bn, /[\u0980-\u09FF]/);
+  assert.ok(probe.findings.some((finding) => finding.code === 'active-file'));
+
+  const status = await (await fetch(`${relay.base}/api/status`)).json();
+  assert.equal(status.channelsSource.kind, 'file');
+  assert.ok(status.channelsSource.syncError);
 });
