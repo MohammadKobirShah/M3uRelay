@@ -48,6 +48,24 @@ docker compose up -d
 - **অডিও** — বাংলা ডিফল্ট, হিন্দি ব্যাকআপ; **কোয়ালিটি** — শুধু 720p (শুরু) আর 1080p।
 - **ব্যান্ডউইথ** — ভিডিও সেগমেন্ট কখনো সার্ভার দিয়ে যায় না, প্লেয়ার সরাসরি CDN
   থেকে 302 রিডাইরেক্টে নেয়। ১০০ চ্যানেল চালালেও সেগমেন্ট ট্রাফিক 0 Mbps।
+- **চ্যানেলের নাম বাংলায়** — সময় টিভি, দীপ্ত টিভি, স্টার জলসা… (ম্যাপে থাকা ~৯০টি
+  চ্যানেল)। সার্চ বাংলায়ও কাজ করে — `সময়` বা `সময়টিভি` লিখলেই Somoy TV আসে।
+  গ্রুপ চিপগুলোও বাংলায়: বাংলা সংবাদ, বাংলা বিনোদন, খেলাধুলা…
+- **শুধু বাংলা, ইংরেজি, হিন্দি** — `CHANNEL_LANGUAGES=Bengali,Bangla,English,Hindi`
+  (ডিফল্ট)। আপনার ১০৫৩ চ্যানেলের মধ্যে **৫৬৮টি** থাকে: হিন্দি ৩২০, ইংরেজি ১৯৯,
+  বাংলা ৪৯। তামিল/তেলুগু/মালায়ালাম ইত্যাদি বাদ যায়। সব ভাষা চাইলে মানটি খালি রাখুন।
+- **সব HLS** — রেপোতে দেওয়া `channels.m3u`-তে ওই **৫৬৮টি চ্যানেলই**
+  `/live/high/<id>.m3u8` ফরম্যাটে (৪৩৮টি DASH এন্ট্রিও রূপান্তরিত)। রিলের নিজের
+  `/playlist.m3u?q=high`-ও সব HLS লিংক দেয়, একটিও MPD নয়।
+- **HLS বনাম DASH** — JioTV Go DRM চ্যানেলগুলো `/live/mpd/<id>?q=high` (DASH/Widevine)
+  হিসেবে দেয়, বাকিগুলো `/live/high/<id>.m3u8`। এই রিলে HLS-only, তাই MPD এন্ট্রির
+  জন্য **HLS সংস্করণ** (`/live/high/<id>.m3u8`) চেষ্টা করে; যেগুলোর HLS নেই সেগুলো
+  কার্ডে `DASH` ব্যাজ নিয়ে বন্ধ দেখায়। সার্ভারে `JIOTV_DRM=false` দিলে প্লেলিস্টেই
+  সব HLS লিংক আসবে, তখন সব চ্যানেল চলবে।
+- **“উৎস” বাটন** — হেডারে `উৎস` চাপলেই দেখা যায় লিস্ট কোথা থেকে আসছে, শেষ সিঙ্ক কখন,
+  কতটি চ্যানেল, কী এরর। সেখানে **সংযোগ পরীক্ষা** চাপলে DNS/IP, HTTP স্ট্যাটাস,
+  রেসপন্স টাইম আর প্লেলিস্টের গঠন বাংলায় দেখায় — সার্ভারে পৌঁছাচ্ছে কি না সেটাই
+  এখানে বোঝা যায়। **এখনই সিঙ্ক** নতুন চ্যানেল সঙ্গে সঙ্গে আনবে।
 
 > প্যানেল/প্লেলিস্ট লিংক: `http://সার্ভার-IP:3000/`, `…/playlist.m3u?q=high`,
 > `…/api/status`। VLC / TiviMate-এ প্লেলিস্ট লিংক বসিয়ে টিভিতেও চালানো যায়।
@@ -104,20 +122,32 @@ docker compose --profile demo up -d   # same demo inside Docker, on :3001
 ### 3. Point it at your own channel list
 
 ```bash
+# default: provider ids (high://<id>) — compact, always rebuilt from UPSTREAM_BASE
 node scripts/import-m3u.js provider.m3u channels.m3u --force
-# /live/low/, /live/medium/ and /live/auto/ URLs are rewritten to /live/high/
-# /live/high/<id>.m3u8 becomes high://<id>  (token always refreshed by the warmer)
+
+# --absolute: keep every URL verbatim, so the list needs no UPSTREAM_BASE
+# --languages: drop every other language (names or ISO codes)
+node scripts/import-m3u.js "JioTv GO.m3u" channels.m3u --force --absolute \
+  --languages=Bengali,Bangla,English,Hindi
 ```
 
-The repo ships `channels.m3u` with 150 Bangla-first channels in the relay's format:
+The importer rewrites `/live/low|medium|auto/` to `/live/high/`, maps JioTV-Go
+DASH entries (`/live/mpd/<id>?q=high`) to their HLS endpoint, and drops
+`#KODIPROP` blocks. `--absolute` writes the full `/live/high/<id>.m3u8` URL for
+every channel, which is what the repo's own list uses.
+
+`channels.m3u` in this repo is the **converted copy of a real JioTV-Go export**:
+**568 channels** (Bangla 49, English 199, Hindi 320) in 12 groups, every stream a
+high-only HLS URL — 438 DASH entries were mapped to `/live/high/<id>.m3u8` and the
+485 other-language channels were dropped.
 
 ```m3u
-#EXTINF:-1 tvg-id="btv-national" tvg-name="BTV National" group-title="Bangla Entertainment" tvg-language="Bangla",BTV National
-high://btv-national
+#EXTINF:-1 tvg-id="143" tvg-name="CNBC TV18 Prime" tvg-logo="https://…/CNBCTV18Prime1.png" group-title="Business" tvg-language="English",CNBC TV18 Prime
+https://tv.home.mangalvedhe.in/live/high/143.m3u8
 ```
 
-`high://<id>` → `<UPSTREAM_BASE>/live/high/<id>.m3u8`. Absolute URLs and `{id}`
-templates are also accepted. Editing `channels.m3u` on disk hot-reloads the list
+`high://<id>` (→ `<UPSTREAM_BASE>/live/high/<id>.m3u8`), absolute URLs and `{id}`
+templates are all accepted. Editing `channels.m3u` on disk hot-reloads the list
 (no restart, `WATCH_CHANNELS=true`).
 
 ---
@@ -128,12 +158,17 @@ templates are also accepted. Editing `channels.m3u` on disk hot-reloads the list
 
 | Feature | Notes |
 | --- | --- |
-| 150 channels | loaded from `/api/channels` in one request, < 1 s |
+| 568 channels | loaded from `/api/channels` in one request, < 1 s |
 | Live search | `/` focuses the search box |
 | Category chips | built from `group-title`, Bangla groups first |
 | Favorites | `localStorage`, star on each card |
 | Last channel auto-play | restores on load, shows a Resume button if autoplay is blocked |
 | Language | Bangla by default, `EN` toggle in the header (`m3ip.lang`) |
+| Bangla names | ~90 popular channels get a Bangla title and group label; unknown names keep the source text |
+| Bangla search | matches the Bangla name, the English name, the id and the group — with or without spaces |
+| Source sheet | header **উৎস** button: active source, last sync, channel count, last error, **Sync now** |
+| Connection probe | inside the sheet: DNS, IP, HTTP status, response time, playlist shape and Bangla findings |
+| DASH badge | cards whose upstream entry is DASH/Widevine show a `DASH` chip (the relay is trying their HLS twin) |
 | Quality switch | Auto (720p start, upgrades to 1080p) / 720p / 1080p |
 | Audio switch | Bangla default, Hindi backup |
 | Picture-in-Picture | button appears where supported |
@@ -145,6 +180,31 @@ Player config is the PRD's fast-start profile: `maxBufferLength: 2`,
 `maxMaxBufferLength: 4`, `startLevel: 0`, `capLevelToPlayerSize: false`,
 `lowLatencyMode: false`, `testBandwidth: false`,
 `manifestLoadingMaxRetry: 20` with a 500 ms delay.
+
+---
+
+## JioTV-Go: HLS and DASH
+
+JioTV-Go publishes two kinds of URLs in `/playlist.m3u?q=high`:
+
+| Upstream entry | What it is | What the relay does |
+| --- | --- | --- |
+| `https://host/live/high/<id>.m3u8` | plain HLS, already high-only | fetched as-is |
+| `https://host/live/mpd/<id>?q=high` | DASH + Widevine (`#KODIPROP` blocks) | rewrites to `https://host/live/high/<id>.m3u8` and tries that (`DASH_TO_HLS=true`) |
+
+A DRM-marked channel usually still has an HLS endpoint, so the rewrite recovers
+many of them; the ones without HLS simply show **DOWN** with a `DASH` badge.
+If you want a pure HLS playlist, run JioTV-Go with `JIOTV_DRM=false` (its own
+env var) — then every entry is `/live/high/<id>.m3u8`.
+
+```bash
+# see exactly what your server publishes, before touching the relay
+curl -s 'http://SERVER:5001/playlist.m3u?q=high' | grep -c '/live/mpd/'
+curl -s 'http://SERVER:5001/playlist.m3u?q=high' | grep -c '/live/high/'
+```
+
+`SKIP_DASH=true` hides DASH-marked channels from the panel/playlist entirely
+instead of trying their HLS twin.
 
 ---
 
@@ -179,7 +239,8 @@ Player config is the PRD's fast-start profile: `maxBufferLength: 2`,
 | `GET /k?u=…&sig=…` | AES-128 key proxy (cached in RAM) |
 | `GET /api/channels` | channel JSON with live status, ladder, audio tracks |
 | `GET /api/channels/<id>` | one channel + parsed filter plan |
-| `GET /api/status` | warmer, cache and counter telemetry (open the panel footer link) |
+| `GET /api/status` | warmer, cache and counter telemetry, including `channelsSource` |
+| `GET /api/probe[?url=…]` | DNS + HTTP + playlist diagnostics for the channel source (the panel's “সংযোগ পরীক্ষা”) |
 | `GET /api/debug/channel?id=<id>` | fetches the origin live and shows exactly what was kept/dropped |
 | `POST /api/reload` | re-read `CHANNELS_FILE` / re-sync `CHANNELS_URL` |
 | `POST /api/sync` | same as `/api/reload`, returns the active source + channel count |
@@ -211,9 +272,14 @@ Everything is environment-driven; see `.env.example` for the annotated list.
 | `CHANNELS_FILE` | `channels.m3u` | channel list (hot-reloaded) |
 | `CHANNELS_URL` | — | fetch the list from your JioTV-Go server (takes precedence; file is the fallback) |
 | `CHANNELS_REFRESH_MS` | `0` | re-sync interval for `CHANNELS_URL` (0 = boot only / `/api/sync`) |
+| `CHANNELS_CACHE_FILE` | `channels.cache.m3u` | last good playlist, reused when the server is unreachable (empty disables) |
 | `CHANNELS_URL_TIMEOUT_MS` | `8000` | timeout for the channel-list fetch |
 | `CHANNELS_URL_HEADERS` | — | JSON headers for the channel-list fetch |
 | `HIGH_FIRST_CUSTOM_URLS` | `true` | promote `/live/<id>.m3u8` to `/live/high/<id>.m3u8` |
+| `DASH_TO_HLS` | `true` | map JioTV-Go `/live/mpd/<id>` (DASH/Widevine) entries to `/live/high/<id>.m3u8` |
+| `SKIP_DASH` | `false` | drop DASH-marked channels instead of trying their HLS twin |
+| `CHANNEL_LANGUAGES` | *(all)* | keep only these channel languages (`Bengali,Bangla,English,Hindi`); empty = everything |
+| `PROBE_ALLOW_ANY_URL` | `false` | let `/api/probe?url=` check hosts other than the configured source |
 | `WARMER_ENABLED` / `WARMER_INTERVAL_MS` / `WARMER_CONCURRENCY` | `true` / `2000` / `24` | warmer loop |
 | `CACHE_TTL_MS` / `STALE_SERVE_MS` | `2500` / `15000` | fresh window + stale-while-revalidate window |
 | `MEDIA_CACHE_TTL_MS` | `1200` | variant playlist micro-cache |
@@ -252,7 +318,7 @@ concurrency 24 (`node server.js`, Docker-ready build):
 | Segment bytes through the relay | 0 in `redirect` / `direct` |
 | Output ladder | exactly `720p` then `1080p` (or one best rung for SD-only sources) |
 | Output audio | Bangla `DEFAULT=YES` + Hindi `AUTOSELECT=YES`, nothing else |
-| Test suite | 41 tests, ~1.8 s (`npm test`) |
+| Test suite | 59 tests, ~1.8 s (`npm test`) |
 
 HLS.js still decides when to jump to 1080p (ABR), because transcoding is off and
 the relay must not lie about the bitrate. The start is pinned to 720p, which is
@@ -264,7 +330,7 @@ what removes the ABR ladder-decision delay from the click path.
 
 ```bash
 npm test
-# 41 tests: manifest filtering, audio policy, URL rewriting, 302 signing,
+# 59 tests: manifest filtering, audio policy, URL rewriting, 302 signing,
 # direct/proxy modes, token injection, fallback, panel serving.
 
 npm run demo
@@ -321,6 +387,7 @@ or simply set `PUBLIC_URL=https://tv.example.com`.
 | --- | --- |
 | Panel loads, manifests 502 | `UPSTREAM_BASE` wrong, upstream needs headers (`UPSTREAM_HEADERS`) or a token (`TOKEN_URL`). Check `/api/debug/channel?id=<id>`. |
 | Manifest fine, video stuck | Segments 403: the CDN needs headers → switch to `SEGMENT_MODE=proxy` (costs bandwidth), or add the token to segment URLs (`TOKEN_APPEND_SEGMENTS=true`) if your CDN signs by query. |
+| Panel shows the **old** list or none | Open **উৎস** → **সংযোগ পরীক্ষা**. It reports DNS failures, HTTP errors, non-M3U responses and timeouts in Bangla. Inside Docker a LAN name needs an `extra_hosts` entry or host networking. |
 | Channels show **DOWN** | The warmer cannot reach the upstream for that id (wrong id or the channel is offline). `/api/status` shows the last error. |
 | Only 720p, no 1080p | The origin's high endpoint has no 1080p rung for that channel — it is not being hidden from you. |
 | Autoplay blocked | Browser policy: click Resume. Muted autoplay is intentionally not used. |
@@ -335,16 +402,18 @@ or simply set `PUBLIC_URL=https://tv.example.com`.
 server.js               HTTP routes, panel hosting, 302 signing
 lib/manifest.js         pure HLS parser → quality/audio filters → renderer
 lib/relay.js            RAM caches, 24/7 warmer, hot-channel warming
-lib/upstream.js         high-first upstream client, tokens, timeouts
+lib/upstream.js         high-first upstream client, DASH→HLS mapping, tokens, timeouts
 lib/channels.js         M3U channel list parser
+lib/bangla.js           Bangla channel names, group labels, search aliases
+lib/probe.js            channel-source diagnostics (DNS/HTTP/playlist)
 lib/config.js           env → config
 lib/util.js             base64url, HMAC, URL helpers, concurrency
 panel/index.html        the whole UI (single file, HLS.js bundled in panel/vendor)
-channels.m3u            150 Bangla-first channels (high:// ids)
+channels.m3u            568 Bangla/English/Hindi channels, high-only HLS (from JioTv GO.m3u)
 channels.demo.m3u       24-channel demo list
 scripts/demo.js         mock origin + relay for `npm run demo`
 scripts/mock-origin.js  JioTV-style mock origin (messy manifests, special cases)
-scripts/import-m3u.js   provider playlist → channels.m3u
+scripts/import-m3u.js   provider playlist → channels.m3u (--absolute keeps HLS URLs)
 scripts/build-demo-media.sh  regenerates demo/media (needs ffmpeg, demo only)
 test/                   unit + end-to-end HTTP tests
 ```
@@ -354,6 +423,9 @@ test/                   unit + end-to-end HTTP tests
 - Use this only with sources you are entitled to access. The relay does not break
   DRM, does not store video, and does not implement any provider authentication
   beyond the optional token hook you configure.
+- The channel list is fetched with a conditional GET; a 304 keeps the current list.
+  Every successful fetch is written to `CHANNELS_CACHE_FILE`, so a restart during a
+  network outage still opens the panel with the last known channels.
 - “Ultra fast start” is achieved by caching the manifest and removing rungs, not
   by lowering latency; video may be a few seconds behind live by design
   (`maxBufferLength: 2`).

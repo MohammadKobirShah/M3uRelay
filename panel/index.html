@@ -144,6 +144,39 @@
     background: var(--accent); color: #04120d; border: 0; border-radius: 999px;
     padding: 12px 22px; font-size: 14px; font-weight: 800; display: inline-flex; align-items: center; gap: 9px;
   }
+  .sheet {
+    position: fixed; inset: 0; z-index: 60; display: none; align-items: center; justify-content: center;
+    padding: 18px; background: rgba(4, 10, 8, 0.66); backdrop-filter: blur(3px);
+  }
+  .sheet.open { display: flex; }
+  .sheet-card {
+    width: min(560px, 100%); max-height: 86vh; overflow: auto;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 14px;
+    box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+  }
+  .sheet-card header {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 14px 16px; border-bottom: 1px solid var(--line-soft);
+  }
+  .sheet-card h3 { margin: 0; font-size: 15px; }
+  .sheet-body { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 10px; }
+  .sheet-row { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; font-size: 12.5px; }
+  .sheet-row span { color: var(--muted-2); }
+  .sheet-row b, .sheet-row code { font-weight: 600; text-align: right; word-break: break-all; }
+  .sheet-row code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; color: var(--text); }
+  .sheet-error { margin: 0; padding: 8px 10px; border-radius: 8px; font-size: 12px;
+    background: rgba(248, 113, 113, 0.12); border: 1px solid rgba(248, 113, 113, 0.3); color: #fecaca; }
+  .sheet-hint { margin: 0; font-size: 11.5px; color: var(--muted-3, var(--muted-2)); line-height: 1.5; }
+  .sheet-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 2px; }
+  .probe-out { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--line-soft); padding-top: 10px; }
+  .finding { display: flex; gap: 8px; font-size: 12px; line-height: 1.5; }
+  .finding i { flex: 0 0 auto; width: 7px; height: 7px; margin-top: 5px; border-radius: 50%; background: var(--muted-2); }
+  .finding.ok i { background: var(--accent); }
+  .finding.info i { background: #60a5fa; }
+  .finding.warn i { background: #fbbf24; }
+  .finding.error i { background: #f87171; }
+  .finding.error { color: #fecaca; }
+  .probe-samples { display: flex; flex-direction: column; gap: 4px; font-size: 11.5px; color: var(--muted-2); }
   .spinner-overlay {
     position: absolute; inset: 0; display: none; place-items: center;
     background: rgba(7, 16, 13, 0.28); backdrop-filter: blur(1px);
@@ -252,6 +285,10 @@
   }
   .card-meta { display: flex; align-items: center; gap: 6px; font-size: 10px; color: var(--muted-2); min-width: 0; }
   .card-meta .grp { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+  .badge-dash {
+    font-size: 9px; font-weight: 800; letter-spacing: 0.06em; padding: 1px 5px; border-radius: 5px;
+    color: #fbbf24; background: rgba(251, 191, 36, 0.14); border: 1px solid rgba(251, 191, 36, 0.3);
+  }
   .qbadge {
     font-size: 9px; font-weight: 800; letter-spacing: 0.02em; padding: 2px 5px; border-radius: 4px;
     background: var(--accent-soft); color: #8ff0cd; white-space: nowrap; flex: none;
@@ -330,6 +367,10 @@
     <button class="btn" id="copyBtn">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M6 15H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1"/></svg>
       <span data-i18n="copyM3u">M3U কপি</span>
+    </button>
+    <button class="btn" id="sourceBtn" title="চ্যানেল উৎস" aria-label="চ্যানেল উৎস">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18Zm0 4.2a1.3 1.3 0 1 1 0 2.6 1.3 1.3 0 0 1 0-2.6ZM13.4 17h-2.8v-1.2h.7v-3.3h-.7v-1.2h2.1v4.5h.7V17Z"/></svg>
+      <span data-i18n="sourceButton">উৎস</span>
     </button>
     <button class="btn" id="langBtn" title="Switch language / ভাষা বদলান" aria-label="Switch language">EN</button>
     <div class="status" title="Manifest warmer status">
@@ -496,6 +537,35 @@
       hlsUnsupportedToast: 'এই ব্রাউজারে HLS চলবে না',
       hlsUnsupportedTitle: 'এখানে HLS চলবে না',
       hlsUnsupportedBody: 'Chrome, Edge, Safari বা Firefox-এ খুলুন।',
+      sourceButton: 'উৎস',
+      sourceTitle: 'চ্যানেল উৎস',
+      sourceUrl: 'উৎস URL',
+      sourceKind: 'ধরন',
+      sourceSynced: 'শেষ সিঙ্ক',
+      sourceChannels: 'চ্যানেল',
+      sourceLanguages: 'ভাষা',
+      allLanguages: 'সব ভাষা',
+      sourceSync: 'এখনই সিঙ্ক',
+      sourceProbe: 'সংযোগ পরীক্ষা',
+      sourceHint: 'Docker-এর ভেতরে লোকাল নাম রিজলভ না হলে compose-এ extra_hosts দিন, নয়তো হোস্ট-নেটওয়ার্ক ব্যবহার করুন।',
+      sourceNoUrl: 'CHANNELS_URL সেট করা নেই',
+      dashHint: 'আপস্ট্রিমে DASH/Widevine — রিলে এর HLS সংস্করণ চেষ্টা করছে',
+      kindUrl: 'সরাসরি সার্ভার থেকে',
+      kindCache: 'সংরক্ষিত কপি (সার্ভারে পৌঁছানো যাচ্ছে না)',
+      kindFile: 'channels.m3u ফাইল',
+      never: 'হয়নি',
+      probeRunning: 'পরীক্ষা চলছে…',
+      probeOk: 'সংযোগ ঠিক আছে',
+      probeFailed: 'সংযোগে সমস্যা',
+      probeDns: 'DNS',
+      probeHttp: 'HTTP',
+      probeTotal: 'মোট সময়',
+      probeSamples: 'নমুনা চ্যানেল',
+      probeNoJudgement: 'কোনো মন্তব্য নেই',
+      syncedToast: 'সিঙ্ক হয়েছে — {n} টি চ্যানেল',
+      syncFailedToast: 'সিঙ্ক হয়নি: {message}',
+      close: 'বন্ধ করুন',
+      ms: '{value} ms',
       footerFactBold: 'ম্যানিফেস্ট-অনলি রিলে',
       footerFactRest: ' · সেগমেন্ট সার্ভারে আসে না',
       channelsLabel: '{n} চ্যানেল',
@@ -558,6 +628,35 @@
       hlsUnsupportedToast: 'This browser cannot play HLS',
       hlsUnsupportedTitle: 'HLS is not supported here',
       hlsUnsupportedBody: 'Open the panel in Chrome, Edge, Safari, or Firefox.',
+      sourceButton: 'Source',
+      sourceTitle: 'Channel source',
+      sourceUrl: 'Source URL',
+      sourceKind: 'Kind',
+      sourceSynced: 'Last sync',
+      sourceChannels: 'Channels',
+      sourceLanguages: 'Languages',
+      allLanguages: 'all languages',
+      sourceSync: 'Sync now',
+      sourceProbe: 'Test connection',
+      sourceHint: 'If a LAN hostname does not resolve inside Docker, add extra_hosts to compose or use host networking.',
+      sourceNoUrl: 'CHANNELS_URL is not set',
+      dashHint: 'DASH/Widevine on the upstream — the relay is trying its HLS twin',
+      kindUrl: 'live from your server',
+      kindCache: 'cached copy (server unreachable)',
+      kindFile: 'channels.m3u file',
+      never: 'never',
+      probeRunning: 'Testing…',
+      probeOk: 'Connection looks good',
+      probeFailed: 'Connection problem',
+      probeDns: 'DNS',
+      probeHttp: 'HTTP',
+      probeTotal: 'Total',
+      probeSamples: 'Sample channels',
+      probeNoJudgement: 'no notes',
+      syncedToast: 'Synced — {n} channels',
+      syncFailedToast: 'Sync failed: {message}',
+      close: 'Close',
+      ms: '{value} ms',
       footerFactBold: 'Manifest-only relay',
       footerFactRest: ' · segments never touch the server',
       channelsLabel: '{n} channels',
@@ -613,6 +712,8 @@
     reconnectAttempts: 0,
     playingSince: 0,
     lastStats: null,
+    lastProbe: null,
+    timersStarted: false,
     destroyed: false,
     lang: (() => {
       const stored = readStore(STORE.lang, 'bn');
@@ -632,6 +733,19 @@
     favCount: $('#favCount'),
     copyBtn: $('#copyBtn'),
     langBtn: $('#langBtn'),
+    sourceBtn: $('#sourceBtn'),
+    sheet: $('#sourceSheet'),
+    sheetClose: $('#sheetClose'),
+    sheetTitle: $('#sheetTitle'),
+    sheetUrl: $('#sheetUrl'),
+    sheetKind: $('#sheetKind'),
+    sheetSynced: $('#sheetSynced'),
+    sheetChannels: $('#sheetChannels'),
+    sheetLanguages: $('#sheetLanguages'),
+    sheetError: $('#sheetError'),
+    syncBtn: $('#syncBtn'),
+    probeBtn: $('#probeBtn'),
+    probeOut: $('#probeOut'),
     resumeBody: $('#resumeBody'),
     statusDot: $('#statusDot'),
     statusText: $('#statusText'),
@@ -708,7 +822,7 @@
   /* ------------------------------------------------------------------ */
   /* load channels                                                       */
   /* ------------------------------------------------------------------ */
-  async function loadChannels() {
+  async function loadChannels({ initial = false } = {}) {
     try {
       const response = await fetch('/api/channels', { cache: 'no-store' });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
@@ -719,11 +833,20 @@
       els.skeleton.hidden = true;
       renderChips();
       renderGrid();
-      restoreSession();
-      pollStatus();
-      setInterval(pollStatus, 15000);
-      setTimeout(refreshChannelMeta, 3000);
-      setInterval(refreshChannelMeta, 60000);
+      if (initial) {
+        restoreSession();
+        pollStatus();
+        if (!state.timersStarted) {
+          state.timersStarted = true;
+          setInterval(pollStatus, 15000);
+          setTimeout(refreshChannelMeta, 3000);
+          setInterval(refreshChannelMeta, 60000);
+        }
+      } else {
+        markPlayingCard();
+        updateFavoriteUI();
+        pollStatus();
+      }
     } catch (error) {
       els.skeleton.hidden = true;
       showEmpty(
@@ -790,12 +913,40 @@
   /* ------------------------------------------------------------------ */
   /* chips + grid                                                        */
   /* ------------------------------------------------------------------ */
+  /* Bangla presentation --------------------------------------------------- */
+  function channelTitle(channel) {
+    return (state.lang === 'bn' && channel.nameBn) || channel.name;
+  }
+
+  function channelGroupLabel(channel) {
+    return (state.lang === 'bn' && channel.groupBn) || channel.group || 'Other';
+  }
+
+  function chipLabel(group) {
+    return (state.lang === 'bn' && group.labelBn) || group.name;
+  }
+
+  function channelHaystack(channel) {
+    return [
+      channel.name,
+      channel.nameBn,
+      channel.group,
+      channel.groupBn,
+      channel.language,
+      channel.id,
+      channel.dash ? 'dash widevine mpd' : null,
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase();
+  }
+
   function renderChips() {
     const favoritesCount = state.favorites.size;
     const chips = [
       { key: 'all', label: t('allChannels'), n: state.channels.length },
       { key: 'favorites', label: t('favoritesChip'), n: favoritesCount },
-      ...state.groups.map((group) => ({ key: group.name, label: group.name, n: group.count })),
+      ...state.groups.map((group) => ({ key: group.name, label: chipLabel(group), n: group.count })),
     ];
     if (!chips.some((chip) => chip.key === state.category)) state.category = 'all';
     els.chips.innerHTML = chips
@@ -812,27 +963,30 @@
       const button = document.createElement('button');
       button.className = 'card';
       button.dataset.id = channel.id;
-      button.dataset.search = `${channel.name} ${channel.group} ${channel.language} ${channel.id}`.toLowerCase();
+      const haystack = channelHaystack(channel);
+      button.dataset.search = haystack;
+      button.dataset.searchCompact = haystack.replace(/\s+/g, '');
       button.dataset.group = channel.group;
-      button.title = `${channel.name} — ${channel.url}`;
+      button.title = channel.nameBn ? `${channel.name} / ${channel.nameBn} — ${channel.url}` : `${channel.name} — ${channel.url}`;
       const quality = (channel.qualities || []).slice(-1)[0] || '';
       const isSd = quality && !/720|1080/.test(quality);
       const status = channel.status || 'pending';
       const tag = statusTag(status);
       button.innerHTML = `
         <div class="thumb">
-          <span class="initials">${escapeHtml(initials(channel.name))}</span>
+          <span class="initials">${escapeHtml(initials(channelTitle(channel)))}</span>
           ${channel.logo ? `<img src="${escapeHtml(channel.logo)}" alt="" loading="lazy" decoding="async" onerror="this.style.display='none'">` : ''}
           <span class="tag-live ${tag.cls}"><i></i>${tag.label}</span>
           <span class="fav ${state.favorites.has(channel.id) ? 'on' : ''}" data-fav="${escapeHtml(channel.id)}" role="button" tabindex="-1" aria-label="Toggle favorite">★</span>
           <span class="eq" aria-hidden="true"><i></i><i></i><i></i></span>
         </div>
         <div class="card-body">
-          <span class="card-name">${escapeHtml(channel.name)}</span>
+          <span class="card-name">${escapeHtml(channelTitle(channel))}</span>
           <span class="card-meta">
             <span class="cdot ${status}"></span>
-            <span class="grp">${escapeHtml(channel.group || 'Other')}</span>
+            <span class="grp">${escapeHtml(channelGroupLabel(channel))}</span>
             ${quality ? `<span class="qbadge ${isSd ? 'sd' : ''}">${escapeHtml(quality)}</span>` : ''}
+            ${channel.dash ? `<span class="badge-dash" title="${escapeHtml(t('dashHint'))}">DASH</span>` : ''}
           </span>
         </div>`;
       fragment.appendChild(button);
@@ -844,9 +998,11 @@
 
   function applyFilter() {
     const query = state.query.trim().toLowerCase();
+    const queryCompact = query.replace(/\s+/g, '');
     let visible = 0;
     for (const card of els.grid.children) {
-      const matchesQuery = !query || card.dataset.search.includes(query);
+      const matchesQuery =
+        !query || card.dataset.search.includes(query) || (card.dataset.searchCompact || '').includes(queryCompact);
       const matchesCategory =
         state.category === 'all'
           ? true
@@ -911,10 +1067,19 @@
     }
   }
 
+  function renderNowPlaying(channel) {
+    els.nowTitle.textContent = channelTitle(channel);
+    const language = (state.lang === 'bn' && channel.languageBn) || channel.language;
+    const audio = (state.lang === 'bn' && channel.defaultAudioBn) || channel.defaultAudio;
+    const audioLabel = state.lang === 'bn' ? 'অডিও' : 'audio';
+    els.nowMeta.textContent = `${channelGroupLabel(channel)}${language ? ` · ${language}` : ''}${
+      audio ? ` · ${audioLabel}: ${audio}` : ''
+    }`;
+  }
+
   function showPlayer(channel) {
     els.playerWrap.hidden = false;
-    els.nowTitle.textContent = channel.name;
-    els.nowMeta.textContent = `${channel.group}${channel.language ? ` · ${channel.language}` : ''}${channel.defaultAudio ? ` · audio: ${channel.defaultAudio}` : ''}`;
+    renderNowPlaying(channel);
     els.resume.classList.remove('show');
     els.spinner.classList.add('show');
     els.startStat.textContent = t('startPending');
@@ -1151,6 +1316,134 @@
     els.footerWarm.textContent = t('warmFooter', { n: warmed, mode: status.upstream.segmentMode });
   }
 
+  /* Source sheet ----------------------------------------------------------- */
+  function kindLabel(kind) {
+    if (kind === 'url') return t('kindUrl');
+    if (kind === 'cache') return t('kindCache');
+    if (kind === 'file') return t('kindFile');
+    return '—';
+  }
+
+  function fmtTime(ms) {
+    if (!ms) return t('never');
+    const date = new Date(ms);
+    try {
+      return date.toLocaleString(state.lang === 'bn' ? 'bn-BD' : 'en-GB', {
+        day: '2-digit',
+        month: 'short',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false,
+      });
+    } catch {
+      return date.toISOString().slice(11, 16);
+    }
+  }
+
+  function renderSourceSheet(source, channels) {
+    const src = source || (state.lastStats && state.lastStats.channelsSource) || {};
+    const counts = channels || (state.lastStats && state.lastStats.channels) || { total: state.channels.length };
+    els.sheetUrl.textContent = src.url || t('sourceNoUrl');
+    els.sheetKind.textContent = kindLabel(src.kind);
+    els.sheetSynced.textContent = fmtTime(src.syncedAt);
+    els.sheetChannels.textContent = `${counts.total ?? state.channels.length}${
+      typeof counts.warmed === 'number' ? ` · ${counts.warmed} ${t('live').toLowerCase()}` : ''
+    }`;
+    els.sheetLanguages.textContent =
+      src.languages && src.languages.length ? src.languages.join(' · ') : t('allLanguages');
+    if (src.syncError) {
+      els.sheetError.hidden = false;
+      els.sheetError.textContent = src.syncError;
+    } else {
+      els.sheetError.hidden = true;
+      els.sheetError.textContent = '';
+    }
+  }
+
+  async function openSourceSheet() {
+    els.sheet.classList.add('open');
+    els.probeOut.hidden = true;
+    els.probeOut.innerHTML = '';
+    renderSourceSheet();
+    try {
+      const response = await fetch('/api/status', { cache: 'no-store' });
+      if (response.ok) {
+        const status = await response.json();
+        state.lastStats = status;
+        renderStatus(status);
+        renderSourceSheet(status.channelsSource, status.channels);
+      }
+    } catch {
+      /* keep whatever the panel already knows */
+    }
+  }
+
+  function closeSourceSheet() {
+    els.sheet.classList.remove('open');
+  }
+
+  function renderProbe(data) {
+    const findings = (data.findings || []).map((finding) => {
+      const text = (state.lang === 'bn' ? finding.bn : finding.en) || finding.en || finding.bn || '';
+      return `<div class="finding ${escapeHtml(finding.level || 'info')}"><i></i><span>${escapeHtml(text)}</span></div>`;
+    });
+    const head = `<div class="sheet-row"><span>${escapeHtml(t('probeHttp'))}</span><b>${
+      data.http && data.http.status ? escapeHtml(String(data.http.status)) : '—'
+    }${data.http && typeof data.http.ms === 'number' ? ` · ${escapeHtml(t('ms', { value: data.http.ms }))}` : ''}</b></div>`;
+    const dnsRow = `<div class="sheet-row"><span>${escapeHtml(t('probeDns'))}</span><b>${
+      data.dns && data.dns.addresses ? escapeHtml(data.dns.addresses.join(', ')) : escapeHtml((data.dns && (data.dns.error || '—')) || '—')
+    }${data.dns && typeof data.dns.ms === 'number' ? ` · ${escapeHtml(t('ms', { value: data.dns.ms }))}` : ''}</b></div>`;
+    const samples = (data.samples || []).length
+      ? `<div class="probe-samples"><span>${escapeHtml(t('probeSamples'))}: ${(data.samples || [])
+          .map((sample) => escapeHtml((state.lang === 'bn' && sample.nameBn) || sample.name))
+          .join(', ')}</span></div>`
+      : '';
+    els.probeOut.innerHTML =
+      `<div class="finding ${data.ok ? 'ok' : 'error'}"><i></i><span>${escapeHtml(
+        data.ok ? t('probeOk') : t('probeFailed'),
+      )}</span></div>` +
+      head +
+      dnsRow +
+      findings.join('') +
+      samples;
+    els.probeOut.hidden = false;
+  }
+
+  async function runProbe() {
+    els.probeBtn.disabled = true;
+    els.probeOut.hidden = false;
+    els.probeOut.innerHTML = `<p class="sheet-hint">${escapeHtml(t('probeRunning'))}</p>`;
+    try {
+      const response = await fetch('/api/probe', { cache: 'no-store' });
+      const data = await response.json();
+      state.lastProbe = data;
+      renderProbe(data);
+    } catch (error) {
+      renderProbe({
+        ok: false,
+        findings: [{ level: 'error', bn: `পরীক্ষা চালানো যায়নি: ${error.message}`, en: `Probe failed: ${error.message}` }],
+      });
+    } finally {
+      els.probeBtn.disabled = false;
+    }
+  }
+
+  async function syncNow() {
+    els.syncBtn.disabled = true;
+    try {
+      const response = await fetch('/api/sync', { method: 'POST' });
+      const data = await response.json();
+      if (!response.ok || !data.ok) throw new Error(data.error || `HTTP ${response.status}`);
+      toast(t('syncedToast', { n: data.channels }));
+      await loadChannels();
+      await openSourceSheet();
+    } catch (error) {
+      toast(t('syncFailedToast', { message: error.message }), 'error');
+    } finally {
+      els.syncBtn.disabled = false;
+    }
+  }
+
   function applyLanguage() {
     const lang = state.lang;
     document.documentElement.lang = lang;
@@ -1184,9 +1477,17 @@
     }
     if (els.audioSelect.options.length) els.audioSelect.options[0].textContent = t('autoAudio');
     renderChips();
+    renderGrid();
+    markPlayingCard();
+    if (state.current) renderNowPlaying(state.current);
     applyFilter();
-    if (state.lastStats) renderStatus(state.lastStats);
-    else els.statusText.textContent = t('statusConnecting');
+    if (state.lastStats) {
+      renderStatus(state.lastStats);
+      renderSourceSheet(state.lastStats.channelsSource, state.lastStats.channels);
+    } else {
+      els.statusText.textContent = t('statusConnecting');
+    }
+    if (state.lastProbe) renderProbe(state.lastProbe);
   }
 
   function pollStatus() {
@@ -1236,6 +1537,17 @@
     if (!card) return;
     if (state.current && state.current.id === card.dataset.id && state.hls) return;
     playChannel(card.dataset.id);
+  });
+
+  els.sourceBtn.addEventListener('click', openSourceSheet);
+  els.sheetClose.addEventListener('click', closeSourceSheet);
+  els.sheet.addEventListener('click', (event) => {
+    if (event.target === els.sheet) closeSourceSheet();
+  });
+  els.syncBtn.addEventListener('click', syncNow);
+  els.probeBtn.addEventListener('click', runProbe);
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && els.sheet.classList.contains('open')) closeSourceSheet();
   });
 
   els.langBtn.addEventListener('click', () => {
@@ -1365,8 +1677,32 @@
     };
     document.head.appendChild(fallback);
   }
-  loadChannels();
+  loadChannels({ initial: true });
 })();
 </script>
+  <div class="sheet" id="sourceSheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <div class="sheet-card">
+      <header>
+        <h3 id="sheetTitle" data-i18n="sourceTitle">চ্যানেল উৎস</h3>
+        <button class="icon-btn" id="sheetClose" title="বন্ধ করুন" aria-label="বন্ধ করুন">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12 19 6.4 17.6 5 12 10.6 6.4 5Z"/></svg>
+        </button>
+      </header>
+      <div class="sheet-body">
+        <div class="sheet-row"><span data-i18n="sourceUrl">উৎস URL</span><code id="sheetUrl">—</code></div>
+        <div class="sheet-row"><span data-i18n="sourceKind">ধরন</span><b id="sheetKind">—</b></div>
+        <div class="sheet-row"><span data-i18n="sourceSynced">শেষ সিঙ্ক</span><b id="sheetSynced">—</b></div>
+        <div class="sheet-row"><span data-i18n="sourceChannels">চ্যানেল</span><b id="sheetChannels">—</b></div>
+        <div class="sheet-row"><span data-i18n="sourceLanguages">ভাষা</span><b id="sheetLanguages">—</b></div>
+        <p class="sheet-error" id="sheetError" hidden></p>
+        <p class="sheet-hint" data-i18n="sourceHint">Docker-এর ভেতরে লোকাল নাম রিজলভ না হলে compose-এ extra_hosts দিন।</p>
+        <div class="sheet-actions">
+          <button class="btn primary" id="syncBtn" data-i18n="sourceSync">এখনই সিঙ্ক</button>
+          <button class="btn" id="probeBtn" data-i18n="sourceProbe">সংযোগ পরীক্ষা</button>
+        </div>
+        <div class="probe-out" id="probeOut" hidden></div>
+      </div>
+    </div>
+  </div>
 </body>
 </html>

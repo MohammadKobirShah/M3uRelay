@@ -21,7 +21,12 @@ services:
       # the fallback when the URL is unreachable (e.g. container cannot see the LAN host).
       CHANNELS_URL: ${CHANNELS_URL:-https://tv.home.mangalvedhe.in/playlist.m3u?q=high}
       CHANNELS_REFRESH_MS: ${CHANNELS_REFRESH_MS:-0}
+      CHANNELS_CACHE_FILE: /app/.cache/channels.m3u
+      # Bangla, English and Hindi channels only (empty = everything).
+      CHANNEL_LANGUAGES: ${CHANNEL_LANGUAGES:-Bengali,Bangla,English,Hindi}
       HIGH_FIRST_CUSTOM_URLS: ${HIGH_FIRST_CUSTOM_URLS:-true}
+      DASH_TO_HLS: ${DASH_TO_HLS:-true}
+      SKIP_DASH: ${SKIP_DASH:-false}
       UPSTREAM_BASE: ${UPSTREAM_BASE:-}
       UPSTREAM_HIGH_PATH: ${UPSTREAM_HIGH_PATH:-/live/high/{id}.m3u8}
       UPSTREAM_AUTO_PATH: ${UPSTREAM_AUTO_PATH:-/live/{id}.m3u8}
@@ -41,6 +46,8 @@ services:
     volumes:
       # Edit the channel list on the host and the warmer picks it up live.
       - ./channels.m3u:/app/channels.m3u:ro
+      # Keeps the last synced playlist across restarts (works offline).
+      - relay-cache:/app/.cache
     healthcheck:
       test:
         - CMD
@@ -68,3 +75,7 @@ services:
       HOST: 0.0.0.0
       CHANNELS_FILE: channels.demo.m3u
       LOG_LEVEL: ${LOG_LEVEL:-info}
+
+volumes:
+  # Named volume so the last synced playlist survives `docker compose up -d --build`.
+  relay-cache:

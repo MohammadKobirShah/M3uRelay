@@ -191,11 +191,12 @@ export function mediaPlaylist(id, quality, { encrypted = false, segmentHost = ''
   return `${lines.join('\n')}\n`;
 }
 
-function send(res, status, body, type = 'application/vnd.apple.mpegurl') {
+function send(res, status, body, type = 'application/vnd.apple.mpegurl', extra = {}) {
   res.writeHead(status, {
     'content-type': type,
     'access-control-allow-origin': '*',
     'cache-control': 'no-store',
+    ...extra,
   });
   res.end(body);
 }
@@ -221,19 +222,32 @@ export function startMockOrigin({ port = 0, host = '127.0.0.1', latencyMs = 15, 
     if (pathname === '/playlist.m3u' || pathname === '/playlist.m3u8') {
       const host = req.headers.host || `127.0.0.1`;
       const entries = [
-        { id: 'news', name: 'News Channel', group: 'Bangla News' },
+        { id: 'news', name: 'Somoy TV', group: 'Bangla News' },
         { id: 'sd', name: 'SD Channel', group: 'Bangla Entertainment' },
         { id: 'enc', name: 'Encrypted Channel', group: 'Movies' },
       ];
       const lines = ['#EXTM3U'];
       for (const entry of entries) {
-        lines.push(`#EXTINF:-1 tvg-id="${entry.id}" group-title="${entry.group}" tvg-language="Bangla",${entry.name}`);
-        // The middle entry is relative on purpose: JioTV-Go playlists sometimes are.
         lines.push(
-          entry.id === 'sd' ? `/live/high/${entry.id}.m3u8` : `http://${host}/live/high/${entry.id}.m3u8`,
+          `#EXTINF:-1 tvg-id="${entry.id}" tvg-logo="https://logo.local/${entry.id}.png" group-title="${entry.group}" tvg-language="Bangla",${entry.name}`,
         );
+        // The middle entry is relative on purpose (JioTV-Go sometimes is), and the
+        // last one is a DRM/DASH entry the relay has to map to its HLS twin.
+        if (entry.id === 'sd') {
+          lines.push(`/live/high/${entry.id}.m3u8`);
+        } else if (entry.id === 'enc') {
+          lines.push(`http://${host}/live/mpd/${entry.id}?q=high`);
+        } else {
+          lines.push(`http://${host}/live/high/${entry.id}.m3u8`);
+        }
       }
-      send(res, 200, `${lines.join('\n')}\n`);
+      const etag = '"mock-playlist-v1"';
+      if (req.headers['if-none-match'] === etag) {
+        res.writeHead(304, { etag, 'access-control-allow-origin': '*' });
+        res.end();
+        return;
+      }
+      send(res, 200, `${lines.join('\n')}\n`, 'application/vnd.apple.mpegurl', { etag });
       return;
     }
     if (pathname === '/__token') {
