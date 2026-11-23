@@ -71,6 +71,8 @@ docker compose up -d
 > `…/api/status`। VLC / TiviMate-এ প্লেলিস্ট লিংক বসিয়ে টিভিতেও চালানো যায়।
 > প্যানেলের **M3U ডাউনলোড** বোতাম চাপলেই পুরো প্লেলিস্ট ফাইল নামে, আর সার্ভার নিজে থেকেই
 > `PLAYLIST_FILE` (ডিফল্ট `channels.generated.m3u`) লিখে রাখে — হাতে কিছু বানাতে হয় না।
+> সোর্স লিস্টে **MPD/DASH** এন্ট্রি থাকলেও সার্ভার নিজেই সেটাকে HLS টুইনে বদলে নেয়;
+> ফাইল আকারে বানাতে চাইলে: `npm run mpd2hls -- "JioTv GO.m3u" -o channels.hls.m3u`।
 
 ---
 
@@ -208,6 +210,58 @@ curl -s 'http://SERVER:5001/playlist.m3u?q=high' | grep -c '/live/high/'
 
 `SKIP_DASH=true` hides DASH-marked channels from the panel/playlist entirely
 instead of trying their HLS twin.
+
+### MPD → HLS conversion
+
+An MPD cannot become HLS bytes without a transcoder, and this project has no
+FFmpeg by design. Every provider (JioTV-Go included) also publishes the **HLS
+twin of the same channel**, so "converting" means mapping each MPD entry onto
+that HLS endpoint — at runtime *and* as a file any player can open.
+
+The mapping lives in one place (`lib/mpd.js`) and is used by the playlist
+parser, the upstream client, the importer and the CLI:
+
+| Input | Output |
+| --- | --- |
+| `/live/mpd/<id>?q=high` · `/live/mpd/<id>` | `/live/high/<id>.m3u8` |
+| `/live/dash/<id>.mpd` | `/live/high/<id>.m3u8` |
+| `…/vod/movie/index.mpd` (query kept) | `…/vod/movie/index.m3u8` |
+| `…/mpd/<name>` · `…/dash/<name>` | `…/high/<name>.m3u8` |
+| `…/dash/<name>/manifest.mpd` | `…/high/<name>.m3u8` |
+| any `.m3u8` | untouched |
+
+**At runtime (nothing to do):** put the MPD-based playlist in `CHANNELS_FILE` or
+point `CHANNELS_URL` at it. Every DASH entry (any `*.mpd`, not just JioTV-Go's
+path) is recognised, gets the `DASH` badge, and is fetched through its HLS twin;
+`/playlist.m3u` and the generated file only ever contain `/live/high/<id>.m3u8`.
+`DASH_TO_HLS=false` disables the mapping, `SKIP_DASH=true` drops such channels.
+
+**As a file (`npm run mpd2hls`):**
+
+```bash
+# your JioTV-Go export → a clean HLS-only playlist (KODIPROP/Widevine lines removed)
+npm run mpd2hls -- "JioTv GO.m3u" -o channels.hls.m3u
+# 1053 channels · 850 MPD mapped to HLS · 203 already HLS
+
+# download the source first, or convert in place; --check only reports
+curl -s 'https://tv.home.mangalvedhe.in/playlist.m3u?q=high' -o provider.m3u
+npm run mpd2hls -- provider.m3u -o channels.m3u
+npm run mpd2hls -- provider.m3u --check
+
+# rewrite the host, e.g. when players reach the relay through a domain
+npm run mpd2hls -- provider.m3u --base https://relay.example:3000 -o public.m3u
+```
+
+```
+usage: node scripts/mpd-to-hls.js <input.m3u | - | https://…> [-o out.m3u]
+                                  [--base https://relay] [--check] [--quiet]
+```
+
+The output keeps `#EXTINF` attributes, names, `#EXTGRP`/`#EXTVLCOPT`, the
+`#EXTM3U x-tvg-url` header and the original order; it removes `#KODIPROP`
+(DASH/Widevine keys are meaningless for HLS) and guarantees that **no `.mpd`
+URL survives**. A channel with no HLS twin stays **DOWN** with a `DASH` badge —
+the relay never fabricates an HLS manifest.
 
 ---
 
@@ -366,7 +420,7 @@ concurrency 24 (`node server.js`, Docker-ready build):
 | Segment bytes through the relay | 0 in `redirect` / `direct` |
 | Output ladder | exactly `720p` then `1080p` (or one best rung for SD-only sources) |
 | Output audio | Bangla `DEFAULT=YES` + Hindi `AUTOSELECT=YES`, nothing else |
-| Test suite | 79 tests, ~3.5 s (`npm test`) |
+| Test suite | 86 tests, ~3.8 s (`npm test`) |
 
 HLS.js still decides when to jump to 1080p (ABR), because transcoding is off and
 the relay must not lie about the bitrate. The start is pinned to 720p, which is
@@ -378,7 +432,7 @@ what removes the ABR ladder-decision delay from the click path.
 
 ```bash
 npm test
-# 79 tests: manifest filtering, audio policy, URL rewriting, 302 signing,
+# 86 tests: manifest filtering, audio policy, URL rewriting, 302 signing,
 # direct/proxy modes, token injection, fallback, panel serving.
 
 npm run demo
@@ -457,6 +511,7 @@ lib/relay.js            RAM caches, 24/7 warmer, hot-channel warming
 lib/upstream.js         high-first upstream client, DASH→HLS mapping, tokens, timeouts
 lib/channels.js         M3U channel list parser
 lib/bangla.js           Bangla channel names, group labels, search aliases
+lib/mpd.js              MPD/DASH → HLS URL mapping (parser, upstream, CLI)
 lib/probe.js            channel-source diagnostics (DNS/HTTP/playlist)
 lib/playlist.js         playlist renderer shared by HTTP + the auto-written file
 lib/config.js           env → config
@@ -467,6 +522,7 @@ channels.demo.m3u       24-channel demo list
 scripts/demo.js         mock origin + relay for `npm run demo`
 scripts/mock-origin.js  JioTV-style mock origin (messy manifests, special cases)
 scripts/import-m3u.js   provider playlist → channels.m3u (--absolute keeps HLS URLs)
+scripts/mpd-to-hls.js   MPD/DASH playlist → HLS-only playlist (`npm run mpd2hls`)
 scripts/build-demo-media.sh  regenerates demo/media (needs ffmpeg, demo only)
 test/                   unit + end-to-end HTTP tests
 ```

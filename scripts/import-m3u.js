@@ -16,6 +16,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { filterByLanguages, parseChannelList } from '../lib/channels.js';
+import { isMpdUrl, mpdToHls } from '../lib/mpd.js';
 
 const languageArg = process.argv.find((arg) => arg.startsWith('--languages='));
 const languages = languageArg
@@ -70,11 +71,13 @@ const ID_PATTERNS = [
 ];
 
 function normalize(url) {
-  return String(url || '')
+  const value = String(url || '');
+  // DASH/Widevine entry -> the HLS twin (JioTV-Go: /live/mpd/<id>?q=high).
+  const hls = mpdToHls(value);
+  if (hls) return hls;
+  return value
     .replace(/\/live\/(low|medium|auto)\//i, '/live/high/')
-    .replace(/\/live\/(low|medium|auto)(?=[/?#]|$)/i, '/live/high')
-    // DASH/Widevine entry -> the HLS endpoint that JioTV-Go also serves.
-    .replace(/\/live\/mpd\/([^/?#]+)(?:\?[^#]*)?/i, '/live/high/$1.m3u8');
+    .replace(/\/live\/(low|medium|auto)(?=[/?#]|$)/i, '/live/high');
 }
 
 let fromIds = 0;
@@ -99,7 +102,7 @@ for (const channel of channels) {
   if (customUrl) {
     const normalized = normalize(customUrl);
     if (normalized !== customUrl) {
-      if (/\/live\/mpd\//i.test(customUrl)) dashMapped += 1;
+      if (isMpdUrl(customUrl)) dashMapped += 1;
       else rewritten += 1;
     }
     customUrl = normalized;

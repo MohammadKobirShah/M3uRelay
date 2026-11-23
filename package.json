@@ -17,6 +17,7 @@
     "test:unit": "node --test test/manifest.test.js test/channels.test.js",
     "test:integration": "node --test test/integration.test.js",
     "import": "node scripts/import-m3u.js",
+    "mpd2hls": "node scripts/mpd-to-hls.js",
     "demo:build-media": "bash scripts/build-demo-media.sh"
   },
   "keywords": [
