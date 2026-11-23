@@ -1,0 +1,70 @@
+# MY IPTV PRO — manifest-only HLS relay
+#
+#   docker compose up -d              production relay + panel on :3000
+#   docker compose --profile demo up -d   offline demo with real test-pattern HLS on :3001
+#
+# Set UPSTREAM_BASE (or use absolute URLs in channels.m3u) before starting.
+
+services:
+  relay:
+    build: .
+    image: m3urelay:latest
+    container_name: m3urelay
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      PORT: "3000"
+      HOST: 0.0.0.0
+      CHANNELS_FILE: ${CHANNELS_FILE:-channels.m3u}
+      # Auto-sync the channel list from your JioTV-Go server; channels.m3u is
+      # the fallback when the URL is unreachable (e.g. container cannot see the LAN host).
+      CHANNELS_URL: ${CHANNELS_URL:-https://tv.home.mangalvedhe.in/playlist.m3u?q=high}
+      CHANNELS_REFRESH_MS: ${CHANNELS_REFRESH_MS:-0}
+      HIGH_FIRST_CUSTOM_URLS: ${HIGH_FIRST_CUSTOM_URLS:-true}
+      UPSTREAM_BASE: ${UPSTREAM_BASE:-}
+      UPSTREAM_HIGH_PATH: ${UPSTREAM_HIGH_PATH:-/live/high/{id}.m3u8}
+      UPSTREAM_AUTO_PATH: ${UPSTREAM_AUTO_PATH:-/live/{id}.m3u8}
+      UPSTREAM_UA: ${UPSTREAM_UA:-M3uRelay/1.0}
+      TOKEN_URL: ${TOKEN_URL:-}
+      TOKEN_FIELD: ${TOKEN_FIELD:-token}
+      TOKEN_HEADER: ${TOKEN_HEADER:-}
+      TOKEN_QUERY: ${TOKEN_QUERY:-}
+      SEGMENT_MODE: ${SEGMENT_MODE:-redirect}
+      WARMER_INTERVAL_MS: ${WARMER_INTERVAL_MS:-2000}
+      WARMER_CONCURRENCY: ${WARMER_CONCURRENCY:-24}
+      CACHE_TTL_MS: ${CACHE_TTL_MS:-2500}
+      PUBLIC_URL: ${PUBLIC_URL:-}
+      URL_SECRET: ${URL_SECRET:-}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      TZ: ${TZ:-UTC}
+    volumes:
+      # Edit the channel list on the host and the warmer picks it up live.
+      - ./channels.m3u:/app/channels.m3u:ro
+    healthcheck:
+      test:
+        - CMD
+        - node
+        - -e
+        - "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+      interval: 30s
+      timeout: 4s
+      retries: 3
+      start_period: 15s
+
+  # Offline demo: bundled mock JioTV-style origin + real 16s test-pattern HLS.
+  # Segments are proxied here only because the mock CDN is not public.
+  demo:
+    profiles: ["demo"]
+    build: .
+    image: m3urelay:latest
+    container_name: m3urelay-demo
+    restart: unless-stopped
+    command: ["node", "scripts/demo.js"]
+    ports:
+      - "${DEMO_PORT:-3001}:3000"
+    environment:
+      PORT: "3000"
+      HOST: 0.0.0.0
+      CHANNELS_FILE: channels.demo.m3u
+      LOG_LEVEL: ${LOG_LEVEL:-info}

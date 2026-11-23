@@ -1,0 +1,26 @@
+name: tests
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Unit + end-to-end tests
+        run: npm test
+      - name: Channel list sanity check
+        run: |
+          node -e "
+          import('./lib/channels.js').then(async ({ parseChannelList }) => {
+            const fs = await import('node:fs/promises');
+            const { channels } = parseChannelList(await fs.readFile('channels.m3u', 'utf8'));
+            if (channels.length < 100) throw new Error('expected 100+ channels, got ' + channels.length);
+            console.log(channels.length + ' channels, first group: ' + channels[0].group);
+          });"

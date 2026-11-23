@@ -1,0 +1,8 @@
+{
+  "generatedBy": "scripts/build-demo-media.sh",
+  "segmentDuration": 2,
+  "segments": 8,
+  "audioSegments": 8,
+  "qualities": ["360p", "720p", "1080p"],
+  "note": "Synthetic test pattern for the offline demo only."
+}
