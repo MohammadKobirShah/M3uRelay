@@ -69,6 +69,8 @@ docker compose up -d
 
 > প্যানেল/প্লেলিস্ট লিংক: `http://সার্ভার-IP:3000/`, `…/playlist.m3u?q=high`,
 > `…/api/status`। VLC / TiviMate-এ প্লেলিস্ট লিংক বসিয়ে টিভিতেও চালানো যায়।
+> প্যানেলের **M3U ডাউনলোড** বোতাম চাপলেই পুরো প্লেলিস্ট ফাইল নামে, আর সার্ভার নিজে থেকেই
+> `PLAYLIST_FILE` (ডিফল্ট `channels.generated.m3u`) লিখে রাখে — হাতে কিছু বানাতে হয় না।
 
 ---
 
@@ -174,7 +176,8 @@ templates are all accepted. Editing `channels.m3u` on disk hot-reloads the list
 | Picture-in-Picture | button appears where supported |
 | Auto reconnect | `startLoad()` → media recovery → full re-init with backoff |
 | Live telemetry | “⚡ 412 ms start”, buffer ahead, current level bitrate |
-| Copy M3U | `http://host/playlist.m3u?q=high` for VLC / TiviMate / OTT Navigator |
+| Download M3U | header **M3U ডাউনলোড** button → `…/playlist.m3u?download=1`, or copy `http://host/playlist.m3u?q=high` for VLC / TiviMate / OTT Navigator |
+| Generated playlist | the sheet also shows the auto-written file (`PLAYLIST_FILE`): path, channel count, last write time |
 
 Player config is the PRD's fast-start profile: `maxBufferLength: 2`,
 `maxMaxBufferLength: 4`, `startLevel: 0`, `capLevelToPlayerSize: false`,
@@ -231,15 +234,17 @@ instead of trying their HLS twin.
 | Route | What it does |
 | --- | --- |
 | `GET /` | panel |
-| `GET /playlist.m3u?q=high` | M3U of all channels, relay high URLs only (`q=low/medium` → 400) |
+| `GET /playlist.m3u?q=high` | M3U of all channels, relay high URLs only (`q=low/medium` → 400), weak ETag → `304` |
+| `GET /playlist.m3u?download=1` | same file as an attachment (`my-iptv.m3u`) for VLC / TiviMate |
 | `GET /live/high/<id>.m3u8` | filtered master from RAM (the fast path) |
 | `GET /live/<id>.m3u8` | compatibility alias for the same high ladder |
 | `GET /v/<id>/720.m3u8` · `/1080.m3u8` · `/best.m3u8` | rewritten variant / audio playlist |
 | `GET /s?u=<b64url>&c=<id>&sig=<hmac>` | 302 to the CDN (or streamed in `proxy` mode) |
 | `GET /k?u=…&sig=…` | AES-128 key proxy (cached in RAM) |
-| `GET /api/channels` | channel JSON with live status, ladder, audio tracks |
+| `GET /api/channels` | channel JSON with live status, ladder, audio tracks (ETag + `304`) |
+| `GET /api/channels?view=lite` | same list, ~2.5× smaller (no manifests/audio) for the panel's background refresh |
 | `GET /api/channels/<id>` | one channel + parsed filter plan |
-| `GET /api/status` | warmer, cache and counter telemetry, including `channelsSource` |
+| `GET /api/status` | warmer, cache and counter telemetry, including `channelsSource` and `playlist` |
 | `GET /api/probe[?url=…]` | DNS + HTTP + playlist diagnostics for the channel source (the panel's “সংযোগ পরীক্ষা”) |
 | `GET /api/debug/channel?id=<id>` | fetches the origin live and shows exactly what was kept/dropped |
 | `POST /api/reload` | re-read `CHANNELS_FILE` / re-sync `CHANNELS_URL` |
@@ -251,6 +256,42 @@ Manifest responses carry `Cache-Control: no-cache`, `Access-Control-Allow-Origin
 
 Segment/key URLs are HMAC-signed (`URL_SECRET`) so `/s` cannot be used as an open
 proxy. Set `URL_SECRET` explicitly when running more than one instance.
+
+---
+
+## Auto-generated playlist
+
+The relay renders one playlist and uses it twice — over HTTP and on disk. Nothing
+has to be exported by hand and both stay in sync with the warmed channel list.
+
+| What | Where |
+| --- | --- |
+| HTTP | `GET /playlist.m3u` (`PUBLIC_URL` decides the host in the URLs, else `http://localhost:PORT`) |
+| Download | `GET /playlist.m3u?download=1` → `attachment; filename="my-iptv.m3u"` |
+| File | `PLAYLIST_FILE` (default `channels.generated.m3u`, compose: `/app/.cache/playlist.m3u`) |
+| Refresh | `PLAYLIST_REFRESH_MS` (default `60000`; `0` = at boot and after every sync only) |
+| Status | `GET /api/status` → `playlist: { enabled, file, channels, bytes, generatedAt, error, refreshMs, origin }` |
+
+Details that matter in daily use:
+
+* **Atomic writes** — a `*.tmp` file is written then renamed, and writes are
+  serialised, so VLC never reads a half-written playlist while `/api/sync` runs.
+* **Missing directories are created** (`mkdir -p`) for both `PLAYLIST_FILE` and
+  `CHANNELS_CACHE_FILE`, so `docker compose up -d` works on a fresh volume.
+* **Weak ETag** (`W/"pl-<channels>-<updatedAt>-<origin length>"`) — players that
+  poll the URL get a cheap `304` instead of 130 KB of text.
+* **High-only URLs** — every entry is `<origin>/live/high/<id>.m3u8`; the file
+  never contains an `auto`/`low`/`medium` or DASH link.
+* **Clean text** — line breaks/control characters are stripped and attributes
+  escaped, so a malformed channel name can never split one entry into two.
+
+```bash
+# what the server wrote, and what it serves, must match
+curl -s localhost:3000/playlist.m3u | diff - channels.generated.m3u && echo same
+
+# download it straight from the panel header button
+curl -OJ 'http://localhost:3000/playlist.m3u?download=1'
+```
 
 ---
 
@@ -318,7 +359,7 @@ concurrency 24 (`node server.js`, Docker-ready build):
 | Segment bytes through the relay | 0 in `redirect` / `direct` |
 | Output ladder | exactly `720p` then `1080p` (or one best rung for SD-only sources) |
 | Output audio | Bangla `DEFAULT=YES` + Hindi `AUTOSELECT=YES`, nothing else |
-| Test suite | 59 tests, ~1.8 s (`npm test`) |
+| Test suite | 75 tests, ~3.3 s (`npm test`) |
 
 HLS.js still decides when to jump to 1080p (ABR), because transcoding is off and
 the relay must not lie about the bitrate. The start is pinned to 720p, which is
@@ -330,7 +371,7 @@ what removes the ABR ladder-decision delay from the click path.
 
 ```bash
 npm test
-# 59 tests: manifest filtering, audio policy, URL rewriting, 302 signing,
+# 75 tests: manifest filtering, audio policy, URL rewriting, 302 signing,
 # direct/proxy modes, token injection, fallback, panel serving.
 
 npm run demo
@@ -393,6 +434,8 @@ or simply set `PUBLIC_URL=https://tv.example.com`.
 | Autoplay blocked | Browser policy: click Resume. Muted autoplay is intentionally not used. |
 | `docker compose up` says channels.m3u is a directory | The bind mount expects the file to exist in the compose directory. Restore it from git. |
 | Everything 404s behind a sub-path | Set `PUBLIC_URL` (or serve at the domain root). |
+| Generated playlist missing | `PLAYLIST_FILE` is empty (disabled directory) or its directory is not writable. `/api/status` → `playlist.error` says why. |
+| Playlist URLs point at `localhost` | Set `PUBLIC_URL=https://your-domain` — the on-disk file uses it for every entry. |
 
 ---
 
@@ -406,6 +449,7 @@ lib/upstream.js         high-first upstream client, DASH→HLS mapping, tokens, 
 lib/channels.js         M3U channel list parser
 lib/bangla.js           Bangla channel names, group labels, search aliases
 lib/probe.js            channel-source diagnostics (DNS/HTTP/playlist)
+lib/playlist.js         playlist renderer shared by HTTP + the auto-written file
 lib/config.js           env → config
 lib/util.js             base64url, HMAC, URL helpers, concurrency
 panel/index.html        the whole UI (single file, HLS.js bundled in panel/vendor)
