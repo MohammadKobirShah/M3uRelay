@@ -27,10 +27,10 @@ import {
 } from './lib/manifest.js';
 import { groupSummary } from './lib/channels.js';
 import { inferredChannelsUrl, probeChannelSource } from './lib/probe.js';
+import { PlaylistFile, buildPlaylist, playlistEtag } from './lib/playlist.js';
 import {
   b64urlDecode,
   b64urlEncode,
-  escapeXml,
   isHttpUrl,
   isPrivateHost,
   requestOrigin,
@@ -45,6 +45,14 @@ const config = loadConfig(process.env);
 const logger = createLogger({ level: config.logLevel, format: config.logFormat });
 const upstream = new Upstream(config, logger.child('upstream'));
 const relay = new Relay({ config, logger: logger.child('relay'), upstream });
+const playlistFile = new PlaylistFile({
+  config,
+  logger: logger.child('playlist'),
+  root: ROOT,
+  getChannels: () => relay.channels,
+  getUpdatedAt: () => relay.channelsLoadedAt,
+  origin: () => config.publicUrl || `http://localhost:${config.port}`,
+});
 
 /* ------------------------------------------------------------------ */
 /* static assets                                                       */
@@ -102,8 +110,25 @@ function baseHeaders(extra = {}) {
   return {
     ...CORS,
     'x-content-type-options': 'nosniff',
+    'referrer-policy': 'no-referrer',
+    'permissions-policy': 'geolocation=(), microphone=(), camera=()',
     ...extra,
   };
+}
+
+/** Weak ETag check for conditional GETs. */
+function isFresh(req, etag) {
+  const header = req.headers['if-none-match'];
+  if (!header || !etag) return false;
+  return String(header)
+    .split(',')
+    .map((value) => value.trim())
+    .some((value) => value === etag || value === '*');
+}
+
+function sendNotModified(req, res, etag) {
+  res.writeHead(304, baseHeaders({ etag, 'cache-control': 'no-cache' }));
+  res.end();
 }
 
 function send(req, res, status, body, headers = {}) {
@@ -378,35 +403,48 @@ async function handlePlaylist(req, res, url, origin) {
     });
     return;
   }
-  const lines = ['#EXTM3U'];
-  for (const channel of relay.channels) {
-    const attrs = [];
-    attrs.push(`tvg-id="${escapeXml(channel.id)}"`);
-    if (channel.logo) attrs.push(`tvg-logo="${escapeXml(channel.logo)}"`);
-    if (channel.group) attrs.push(`group-title="${escapeXml(channel.group)}"`);
-    if (channel.language) attrs.push(`tvg-language="${escapeXml(channel.language)}"`);
-    attrs.push(`tvg-chno="${channel.number || channel.order + 1}"`);
-    lines.push(`#EXTINF:-1 ${attrs.join(' ')},${channel.name}`);
-    lines.push(`${origin}/live/high/${encodeURIComponent(channel.id)}.m3u8`);
+  const updatedAt = relay.channelsLoadedAt || 0;
+  const etag = playlistEtag(relay.channels, { origin, updatedAt });
+  if (isFresh(req, etag)) {
+    relay.counters.playlistRequests += 1;
+    sendNotModified(req, res, etag);
+    return;
   }
+  const text = buildPlaylist(relay.channels, { origin, updatedAt });
   relay.counters.playlistRequests += 1;
-  send(req, res, 200, `${lines.join('\n')}\n`, {
+  const download = url.searchParams.get('download') === '1';
+  send(req, res, 200, text, {
     'content-type': 'application/vnd.apple.mpegurl; charset=utf-8',
     'cache-control': 'no-cache',
-    'content-disposition': 'inline; filename="playlist.m3u"',
+    etag,
+    'content-disposition': `${download ? 'attachment' : 'inline'}; filename="my-iptv.m3u"`,
   });
 }
 
-function handleChannels(req, res) {
-  const channels = relay.channels.map((channel) => relay.channelView(channel));
-  sendJson(req, res, 200, {
-    generatedAt: Date.now(),
-    total: channels.length,
-    groups: groupSummary(relay.channels),
-    source: relay.channelSource,
-    syncedAt: relay.channelSync.syncedAt || null,
-    channels,
-  });
+function handleChannels(req, res, url) {
+  const view = url && url.searchParams.get('view') === 'lite' ? 'lite' : 'full';
+  const etag = `W/"ch-${view}-${relay.channels.length}-${relay.channelsLoadedAt}"`;
+  if (isFresh(req, etag)) {
+    sendNotModified(req, res, etag);
+    return;
+  }
+  const channels =
+    view === 'lite' ? relay.channels.map((channel) => relay.channelViewLite(channel)) : relay.channels.map((channel) => relay.channelView(channel));
+  sendJson(
+    req,
+    res,
+    200,
+    {
+      generatedAt: Date.now(),
+      view,
+      total: channels.length,
+      groups: groupSummary(relay.channels),
+      source: relay.channelSource,
+      syncedAt: relay.channelSync.syncedAt || null,
+      channels,
+    },
+    { etag, 'cache-control': 'no-cache' },
+  );
 }
 
 async function handleProbe(req, res, url) {
@@ -469,7 +507,7 @@ async function handleProbe(req, res, url) {
 }
 
 function handleStatus(req, res) {
-  sendJson(req, res, 200, relay.snapshot());
+  sendJson(req, res, 200, { ...relay.snapshot(), playlist: playlistFile.snapshot() });
 }
 
 function handleHealth(req, res) {
@@ -550,10 +588,17 @@ function serveStatic(req, res, relativePath, { immutable = false, type } = {}) {
   }
   const ext = path.extname(relativePath).toLowerCase();
   const contentType = type || TYPES[ext] || 'application/octet-stream';
+  const etag = `W/"st-${entry.size}-${Math.round(entry.mtimeMs)}"`;
   const headers = baseHeaders({
     'content-type': contentType,
     'cache-control': immutable ? 'public, max-age=31536000, immutable' : 'no-cache',
+    etag,
   });
+  if (isFresh(req, etag)) {
+    res.writeHead(304, headers);
+    res.end();
+    return;
+  }
   const acceptsGzip = /\bgzip\b/.test(String(req.headers['accept-encoding'] || ''));
   if (acceptsGzip) {
     headers['content-encoding'] = 'gzip';
@@ -599,7 +644,7 @@ async function router(req, res) {
     return;
   }
   if (pathname === '/vendor/hls.min.js' || pathname === '/panel/vendor/hls.min.js' || pathname === '/hls.min.js') {
-    serveStatic(req, res, 'panel/vendor/hls.min.js', { type: TYPES['.js'] });
+    serveStatic(req, res, 'panel/vendor/hls.min.js', { type: TYPES['.js'], immutable: true });
     return;
   }
   if (pathname === '/favicon.ico') {
@@ -612,7 +657,7 @@ async function router(req, res) {
     return;
   }
   if (pathname === '/api/channels') {
-    handleChannels(req, res);
+    handleChannels(req, res, url);
     return;
   }
   if (pathname === '/api/status') {
@@ -627,12 +672,15 @@ async function router(req, res) {
     try {
       await relay.loadChannels();
       relay.access.clear();
+      await playlistFile.write();
       sendJson(req, res, 200, {
         ok: true,
         channels: relay.channels.length,
         source: relay.channelSource,
         url: relay.channelSource === 'url' ? config.channelsUrl : null,
         syncError: relay.channelSyncError,
+        degraded: Boolean(relay.channelSyncError),
+        cacheUsed: Boolean(relay.channelSync.cacheUsed),
       });
     } catch (error) {
       sendJson(req, res, 500, { ok: false, error: error.message });
@@ -705,7 +753,9 @@ const server = http.createServer((req, res) => {
 
 server.keepAliveTimeout = 65000;
 server.headersTimeout = 66000;
-server.requestTimeout = 0;
+server.requestTimeout = 30000;
+server.maxHeadersCount = 128;
+server.maxRequestsPerSocket = 0;
 server.on('clientError', (error, socket) => {
   if (socket.writable) socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');
 });
@@ -728,6 +778,7 @@ async function main() {
   }
 
   relay.start();
+  playlistFile.start(config.playlistRefreshMs);
 
   server.listen(config.port, config.host, () => {
     const shown = config.publicUrl || `http://${config.host === '0.0.0.0' ? 'localhost' : config.host}:${config.port}`;
@@ -741,10 +792,14 @@ async function main() {
     );
     if (config.channelsUrl) logger.info(`sync       ${config.channelsUrl}${config.channelsRefreshMs ? ` every ${config.channelsRefreshMs}ms` : ''}`);
     if (config.upstreamBase) logger.info(`upstream   ${config.upstreamBase}${config.upstreamHighPath}`);
+    if (playlistFile.state.enabled) {
+      logger.info(`playlist   file ${playlistFile.state.file} (every ${config.playlistRefreshMs}ms)`);
+    }
   });
 
   const shutdown = async (signal) => {
     logger.info(`${signal} received — shutting down`);
+    playlistFile.stop();
     server.close();
     await relay.stop();
     setTimeout(() => process.exit(0), 50).unref();
