@@ -51,9 +51,12 @@ docker compose up -d
 - **চ্যানেলের নাম বাংলায়** — সময় টিভি, দীপ্ত টিভি, স্টার জলসা… (ম্যাপে থাকা ~৯০টি
   চ্যানেল)। সার্চ বাংলায়ও কাজ করে — `সময়` বা `সময়টিভি` লিখলেই Somoy TV আসে।
   গ্রুপ চিপগুলোও বাংলায়: বাংলা সংবাদ, বাংলা বিনোদন, খেলাধুলা…
-- **সব HLS** — রেপোতে দেওয়া `channels.m3u`-তে আপনার সার্ভারের **১০৫৩টি চ্যানেলই**
-  `/live/high/<id>.m3u8` ফরম্যাটে রূপান্তরিত (৮৫০টি DASH এন্ট্রিও)। রিলের নিজের
-  `/playlist.m3u?q=high`-ও ১০৫৩টি HLS লিংক দেয়, একটিও MPD নয়।
+- **শুধু বাংলা, ইংরেজি, হিন্দি** — `CHANNEL_LANGUAGES=Bengali,Bangla,English,Hindi`
+  (ডিফল্ট)। আপনার ১০৫৩ চ্যানেলের মধ্যে **৫৬৮টি** থাকে: হিন্দি ৩২০, ইংরেজি ১৯৯,
+  বাংলা ৪৯। তামিল/তেলুগু/মালায়ালাম ইত্যাদি বাদ যায়। সব ভাষা চাইলে মানটি খালি রাখুন।
+- **সব HLS** — রেপোতে দেওয়া `channels.m3u`-তে ওই **৫৬৮টি চ্যানেলই**
+  `/live/high/<id>.m3u8` ফরম্যাটে (৪৩৮টি DASH এন্ট্রিও রূপান্তরিত)। রিলের নিজের
+  `/playlist.m3u?q=high`-ও সব HLS লিংক দেয়, একটিও MPD নয়।
 - **HLS বনাম DASH** — JioTV Go DRM চ্যানেলগুলো `/live/mpd/<id>?q=high` (DASH/Widevine)
   হিসেবে দেয়, বাকিগুলো `/live/high/<id>.m3u8`। এই রিলে HLS-only, তাই MPD এন্ট্রির
   জন্য **HLS সংস্করণ** (`/live/high/<id>.m3u8`) চেষ্টা করে; যেগুলোর HLS নেই সেগুলো
@@ -123,7 +126,9 @@ docker compose --profile demo up -d   # same demo inside Docker, on :3001
 node scripts/import-m3u.js provider.m3u channels.m3u --force
 
 # --absolute: keep every URL verbatim, so the list needs no UPSTREAM_BASE
-node scripts/import-m3u.js "JioTv GO.m3u" channels.m3u --force --absolute
+# --languages: drop every other language (names or ISO codes)
+node scripts/import-m3u.js "JioTv GO.m3u" channels.m3u --force --absolute \
+  --languages=Bengali,Bangla,English,Hindi
 ```
 
 The importer rewrites `/live/low|medium|auto/` to `/live/high/`, maps JioTV-Go
@@ -132,8 +137,9 @@ DASH entries (`/live/mpd/<id>?q=high`) to their HLS endpoint, and drops
 every channel, which is what the repo's own list uses.
 
 `channels.m3u` in this repo is the **converted copy of a real JioTV-Go export**:
-**1053 channels, 12 groups, every stream a high-only HLS URL** (850 DASH entries
-were mapped to `/live/high/<id>.m3u8`).
+**568 channels** (Bangla 49, English 199, Hindi 320) in 12 groups, every stream a
+high-only HLS URL — 438 DASH entries were mapped to `/live/high/<id>.m3u8` and the
+485 other-language channels were dropped.
 
 ```m3u
 #EXTINF:-1 tvg-id="143" tvg-name="CNBC TV18 Prime" tvg-logo="https://…/CNBCTV18Prime1.png" group-title="Business" tvg-language="English",CNBC TV18 Prime
@@ -152,7 +158,7 @@ templates are all accepted. Editing `channels.m3u` on disk hot-reloads the list
 
 | Feature | Notes |
 | --- | --- |
-| 1053 channels | loaded from `/api/channels` in one request, < 1 s |
+| 568 channels | loaded from `/api/channels` in one request, < 1 s |
 | Live search | `/` focuses the search box |
 | Category chips | built from `group-title`, Bangla groups first |
 | Favorites | `localStorage`, star on each card |
@@ -272,6 +278,7 @@ Everything is environment-driven; see `.env.example` for the annotated list.
 | `HIGH_FIRST_CUSTOM_URLS` | `true` | promote `/live/<id>.m3u8` to `/live/high/<id>.m3u8` |
 | `DASH_TO_HLS` | `true` | map JioTV-Go `/live/mpd/<id>` (DASH/Widevine) entries to `/live/high/<id>.m3u8` |
 | `SKIP_DASH` | `false` | drop DASH-marked channels instead of trying their HLS twin |
+| `CHANNEL_LANGUAGES` | *(all)* | keep only these channel languages (`Bengali,Bangla,English,Hindi`); empty = everything |
 | `PROBE_ALLOW_ANY_URL` | `false` | let `/api/probe?url=` check hosts other than the configured source |
 | `WARMER_ENABLED` / `WARMER_INTERVAL_MS` / `WARMER_CONCURRENCY` | `true` / `2000` / `24` | warmer loop |
 | `CACHE_TTL_MS` / `STALE_SERVE_MS` | `2500` / `15000` | fresh window + stale-while-revalidate window |
@@ -311,7 +318,7 @@ concurrency 24 (`node server.js`, Docker-ready build):
 | Segment bytes through the relay | 0 in `redirect` / `direct` |
 | Output ladder | exactly `720p` then `1080p` (or one best rung for SD-only sources) |
 | Output audio | Bangla `DEFAULT=YES` + Hindi `AUTOSELECT=YES`, nothing else |
-| Test suite | 58 tests, ~1.8 s (`npm test`) |
+| Test suite | 59 tests, ~1.8 s (`npm test`) |
 
 HLS.js still decides when to jump to 1080p (ABR), because transcoding is off and
 the relay must not lie about the bitrate. The start is pinned to 720p, which is
@@ -323,7 +330,7 @@ what removes the ABR ladder-decision delay from the click path.
 
 ```bash
 npm test
-# 58 tests: manifest filtering, audio policy, URL rewriting, 302 signing,
+# 59 tests: manifest filtering, audio policy, URL rewriting, 302 signing,
 # direct/proxy modes, token injection, fallback, panel serving.
 
 npm run demo
@@ -402,7 +409,7 @@ lib/probe.js            channel-source diagnostics (DNS/HTTP/playlist)
 lib/config.js           env → config
 lib/util.js             base64url, HMAC, URL helpers, concurrency
 panel/index.html        the whole UI (single file, HLS.js bundled in panel/vendor)
-channels.m3u            1053 channels converted to high-only HLS (from JioTv GO.m3u)
+channels.m3u            568 Bangla/English/Hindi channels, high-only HLS (from JioTv GO.m3u)
 channels.demo.m3u       24-channel demo list
 scripts/demo.js         mock origin + relay for `npm run demo`
 scripts/mock-origin.js  JioTV-style mock origin (messy manifests, special cases)

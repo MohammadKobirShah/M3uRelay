@@ -107,4 +107,7 @@ test('the shipped channels.m3u is HLS-only', async () => {
   );
   assert.deepEqual(notHls.map((channel) => channel.name), [], 'every stream URL must be /live/high/<id>.m3u8');
   assert.ok(channels.every((channel) => channel.group && channel.logo !== undefined));
+  // Only Bangla, English and Hindi channels ship in the repo list.
+  const languages = new Set(channels.map((channel) => channel.language));
+  assert.deepEqual([...languages].sort(), ['Bengali', 'English', 'Hindi']);
 });

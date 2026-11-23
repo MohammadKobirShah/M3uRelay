@@ -2,51 +2,51 @@
 # Demo list for `npm run demo` (mock origin). Same format as channels.m3u.
 # ids map to <UPSTREAM_BASE>/live/high/<id>.m3u8 on the mock origin.
 
-#EXTINF:-1 tvg-id="btv-national" tvg-name="BTV National" group-title="Bangla Entertainment",BTV National
+#EXTINF:-1 tvg-id="btv-national" tvg-name="BTV National" tvg-language="Bangla" group-title="Bangla Entertainment",BTV National
 high://btv-national
-#EXTINF:-1 tvg-id="deepto-tv" tvg-name="Deepto TV" group-title="Bangla Entertainment",Deepto TV
+#EXTINF:-1 tvg-id="deepto-tv" tvg-name="Deepto TV" tvg-language="Bangla" group-title="Bangla Entertainment",Deepto TV
 high://deepto-tv
-#EXTINF:-1 tvg-id="ntv" tvg-name="NTV" group-title="Bangla Entertainment",NTV
+#EXTINF:-1 tvg-id="ntv" tvg-name="NTV" tvg-language="Bangla" group-title="Bangla Entertainment",NTV
 high://ntv
-#EXTINF:-1 tvg-id="rtv" tvg-name="RTV" group-title="Bangla Entertainment",RTV
+#EXTINF:-1 tvg-id="rtv" tvg-name="RTV" tvg-language="Bangla" group-title="Bangla Entertainment",RTV
 high://rtv
-#EXTINF:-1 tvg-id="atn-bangla" tvg-name="ATN Bangla" group-title="Bangla Entertainment",ATN Bangla
+#EXTINF:-1 tvg-id="atn-bangla" tvg-name="ATN Bangla" tvg-language="Bangla" group-title="Bangla Entertainment",ATN Bangla
 high://atn-bangla
-#EXTINF:-1 tvg-id="channel-i" tvg-name="Channel i" group-title="Bangla Entertainment",Channel i
+#EXTINF:-1 tvg-id="channel-i" tvg-name="Channel i" tvg-language="Bangla" group-title="Bangla Entertainment",Channel i
 high://channel-i
-#EXTINF:-1 tvg-id="banglavision" tvg-name="Banglavision" group-title="Bangla Entertainment",Banglavision
+#EXTINF:-1 tvg-id="banglavision" tvg-name="Banglavision" tvg-language="Bangla" group-title="Bangla Entertainment",Banglavision
 high://banglavision
-#EXTINF:-1 tvg-id="maasranga-tv" tvg-name="Maasranga TV" group-title="Bangla Entertainment",Maasranga TV
+#EXTINF:-1 tvg-id="maasranga-tv" tvg-name="Maasranga TV" tvg-language="Bangla" group-title="Bangla Entertainment",Maasranga TV
 high://maasranga-tv
-#EXTINF:-1 tvg-id="somoy-tv" tvg-name="Somoy TV" group-title="Bangla News",Somoy TV
+#EXTINF:-1 tvg-id="somoy-tv" tvg-name="Somoy TV" tvg-language="Bangla" group-title="Bangla News",Somoy TV
 high://somoy-tv
-#EXTINF:-1 tvg-id="jamuna-tv" tvg-name="Jamuna TV" group-title="Bangla News",Jamuna TV
+#EXTINF:-1 tvg-id="jamuna-tv" tvg-name="Jamuna TV" tvg-language="Bangla" group-title="Bangla News",Jamuna TV
 high://jamuna-tv
-#EXTINF:-1 tvg-id="channel-24" tvg-name="Channel 24" group-title="Bangla News",Channel 24
+#EXTINF:-1 tvg-id="channel-24" tvg-name="Channel 24" tvg-language="Bangla" group-title="Bangla News",Channel 24
 high://channel-24
-#EXTINF:-1 tvg-id="ekattor-tv" tvg-name="Ekattor TV" group-title="Bangla News",Ekattor TV
+#EXTINF:-1 tvg-id="ekattor-tv" tvg-name="Ekattor TV" tvg-language="Bangla" group-title="Bangla News",Ekattor TV
 high://ekattor-tv
-#EXTINF:-1 tvg-id="star-jalsha" tvg-name="Star Jalsha" group-title="Bangla Entertainment",Star Jalsha
+#EXTINF:-1 tvg-id="star-jalsha" tvg-name="Star Jalsha" tvg-language="Bangla" group-title="Bangla Entertainment",Star Jalsha
 high://star-jalsha
-#EXTINF:-1 tvg-id="zee-bangla" tvg-name="Zee Bangla" group-title="Bangla Entertainment",Zee Bangla
+#EXTINF:-1 tvg-id="zee-bangla" tvg-name="Zee Bangla" tvg-language="Bangla" group-title="Bangla Entertainment",Zee Bangla
 high://zee-bangla
-#EXTINF:-1 tvg-id="colors-bangla" tvg-name="Colors Bangla" group-title="Bangla Entertainment",Colors Bangla
+#EXTINF:-1 tvg-id="colors-bangla" tvg-name="Colors Bangla" tvg-language="Bangla" group-title="Bangla Entertainment",Colors Bangla
 high://colors-bangla
-#EXTINF:-1 tvg-id="sony-aath" tvg-name="Sony Aath" group-title="Bangla Entertainment",Sony Aath
+#EXTINF:-1 tvg-id="sony-aath" tvg-name="Sony Aath" tvg-language="Bangla" group-title="Bangla Entertainment",Sony Aath
 high://sony-aath
-#EXTINF:-1 tvg-id="star-plus" tvg-name="Star Plus" group-title="Hindi Entertainment",Star Plus
+#EXTINF:-1 tvg-id="star-plus" tvg-name="Star Plus" tvg-language="Hindi" group-title="Hindi Entertainment",Star Plus
 high://star-plus
-#EXTINF:-1 tvg-id="colors-tv" tvg-name="Colors TV" group-title="Hindi Entertainment",Colors TV
+#EXTINF:-1 tvg-id="colors-tv" tvg-name="Colors TV" tvg-language="Hindi" group-title="Hindi Entertainment",Colors TV
 high://colors-tv
-#EXTINF:-1 tvg-id="zee-tv" tvg-name="Zee TV" group-title="Hindi Entertainment",Zee TV
+#EXTINF:-1 tvg-id="zee-tv" tvg-name="Zee TV" tvg-language="Hindi" group-title="Hindi Entertainment",Zee TV
 high://zee-tv
-#EXTINF:-1 tvg-id="sony-set" tvg-name="Sony Entertainment Television" group-title="Hindi Entertainment",Sony Entertainment Television
+#EXTINF:-1 tvg-id="sony-set" tvg-name="Sony Entertainment Television" tvg-language="Hindi" group-title="Hindi Entertainment",Sony Entertainment Television
 high://sony-set
-#EXTINF:-1 tvg-id="aaj-tak" tvg-name="Aaj Tak" group-title="Hindi News",Aaj Tak
+#EXTINF:-1 tvg-id="aaj-tak" tvg-name="Aaj Tak" tvg-language="Hindi" group-title="Hindi News",Aaj Tak
 high://aaj-tak
-#EXTINF:-1 tvg-id="star-gold" tvg-name="Star Gold" group-title="Hindi Movies",Star Gold
+#EXTINF:-1 tvg-id="star-gold" tvg-name="Star Gold" tvg-language="Hindi" group-title="Hindi Movies",Star Gold
 high://star-gold
-#EXTINF:-1 tvg-id="sony-max" tvg-name="Sony Max" group-title="Hindi Movies",Sony Max
+#EXTINF:-1 tvg-id="sony-max" tvg-name="Sony Max" tvg-language="Hindi" group-title="Hindi Movies",Sony Max
 high://sony-max
-#EXTINF:-1 tvg-id="star-sports-1-hindi" tvg-name="Star Sports 1 Hindi" group-title="Sports",Star Sports 1 Hindi
+#EXTINF:-1 tvg-id="star-sports-1-hindi" tvg-name="Star Sports 1 Hindi" tvg-language="English" group-title="Sports",Star Sports 1 Hindi
 high://star-sports-1-hindi

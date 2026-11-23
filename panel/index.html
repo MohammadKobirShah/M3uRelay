@@ -543,6 +543,8 @@
       sourceKind: 'ধরন',
       sourceSynced: 'শেষ সিঙ্ক',
       sourceChannels: 'চ্যানেল',
+      sourceLanguages: 'ভাষা',
+      allLanguages: 'সব ভাষা',
       sourceSync: 'এখনই সিঙ্ক',
       sourceProbe: 'সংযোগ পরীক্ষা',
       sourceHint: 'Docker-এর ভেতরে লোকাল নাম রিজলভ না হলে compose-এ extra_hosts দিন, নয়তো হোস্ট-নেটওয়ার্ক ব্যবহার করুন।',
@@ -632,6 +634,8 @@
       sourceKind: 'Kind',
       sourceSynced: 'Last sync',
       sourceChannels: 'Channels',
+      sourceLanguages: 'Languages',
+      allLanguages: 'all languages',
       sourceSync: 'Sync now',
       sourceProbe: 'Test connection',
       sourceHint: 'If a LAN hostname does not resolve inside Docker, add extra_hosts to compose or use host networking.',
@@ -737,6 +741,7 @@
     sheetKind: $('#sheetKind'),
     sheetSynced: $('#sheetSynced'),
     sheetChannels: $('#sheetChannels'),
+    sheetLanguages: $('#sheetLanguages'),
     sheetError: $('#sheetError'),
     syncBtn: $('#syncBtn'),
     probeBtn: $('#probeBtn'),
@@ -1344,6 +1349,8 @@
     els.sheetChannels.textContent = `${counts.total ?? state.channels.length}${
       typeof counts.warmed === 'number' ? ` · ${counts.warmed} ${t('live').toLowerCase()}` : ''
     }`;
+    els.sheetLanguages.textContent =
+      src.languages && src.languages.length ? src.languages.join(' · ') : t('allLanguages');
     if (src.syncError) {
       els.sheetError.hidden = false;
       els.sheetError.textContent = src.syncError;
@@ -1686,6 +1693,7 @@
         <div class="sheet-row"><span data-i18n="sourceKind">ধরন</span><b id="sheetKind">—</b></div>
         <div class="sheet-row"><span data-i18n="sourceSynced">শেষ সিঙ্ক</span><b id="sheetSynced">—</b></div>
         <div class="sheet-row"><span data-i18n="sourceChannels">চ্যানেল</span><b id="sheetChannels">—</b></div>
+        <div class="sheet-row"><span data-i18n="sourceLanguages">ভাষা</span><b id="sheetLanguages">—</b></div>
         <p class="sheet-error" id="sheetError" hidden></p>
         <p class="sheet-hint" data-i18n="sourceHint">Docker-এর ভেতরে লোকাল নাম রিজলভ না হলে compose-এ extra_hosts দিন।</p>
         <div class="sheet-actions">

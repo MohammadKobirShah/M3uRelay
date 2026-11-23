@@ -15,8 +15,12 @@
 
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { parseChannelList } from '../lib/channels.js';
+import { filterByLanguages, parseChannelList } from '../lib/channels.js';
 
+const languageArg = process.argv.find((arg) => arg.startsWith('--languages='));
+const languages = languageArg
+  ? languageArg.slice('--languages='.length).split(',').map((entry) => entry.trim()).filter(Boolean)
+  : [];
 const flags = new Set(['--force', '--absolute']);
 const args = process.argv.slice(2).filter((arg) => !flags.has(arg));
 const force = process.argv.includes('--force');
@@ -25,12 +29,22 @@ const input = args[0];
 const output = args[1] || 'channels.m3u';
 
 if (!input) {
-  console.error('usage: node scripts/import-m3u.js <provider.m3u> [channels.m3u] [--force] [--absolute]');
+  console.error(
+    'usage: node scripts/import-m3u.js <provider.m3u> [channels.m3u] [--force] [--absolute] [--languages=Bengali,English,Hindi]',
+  );
   process.exit(1);
 }
 
 const text = await fs.readFile(input, 'utf8');
-const { channels, duplicates } = parseChannelList(text);
+const parsedList = parseChannelList(text);
+const duplicates = parsedList.duplicates;
+let channels = parsedList.channels;
+let languageDropped = 0;
+if (languages.length) {
+  const filtered = filterByLanguages(channels, languages);
+  languageDropped = filtered.removed.length;
+  channels = filtered.channels;
+}
 
 if (!channels.length) {
   console.error(`no channels found in ${input}`);
@@ -74,6 +88,7 @@ const lines = [
   absolute
     ? '# every stream URL below is the HLS /live/high/<id>.m3u8 endpoint (DASH entries converted)'
     : '# high://<id> channels always resolve to <UPSTREAM_BASE>/live/high/<id>.m3u8',
+  languages.length ? `# languages: ${languages.join(', ')}` : '# languages: all',
   '',
 ];
 
@@ -132,6 +147,7 @@ if (rewritten) console.log(`  ${rewritten} low/medium/auto URLs rewritten to /li
 if (dashMapped) console.log(`  ${dashMapped} DRM (DASH) channels mapped to their HLS endpoint`);
 if (absolute) console.log('  --absolute: every stream URL is a full HLS URL (no UPSTREAM_BASE needed)');
 if (duplicates.length) console.log(`  ${duplicates.length} duplicate channel ids skipped`);
+if (languageDropped) console.log(`  ${languageDropped} channels dropped by --languages=${languages.join(',')}`);
 console.log('next: set UPSTREAM_BASE (if using high:// ids) and restart the relay');
 
 function escapeAttr(value) {

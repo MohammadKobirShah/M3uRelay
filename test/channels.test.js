@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import { parseChannelList } from '../lib/channels.js';
 import { loadConfig } from '../lib/config.js';
+import { filterByLanguages, languageKey } from '../lib/channels.js';
 import { createLogger } from '../lib/logger.js';
 import { Upstream } from '../lib/upstream.js';
 
@@ -124,4 +125,26 @@ test('relative stream URLs resolve against the playlist URL', () => {
   assert.equal(list.channels[0].customUrl, 'http://tv.local/live/high/a.m3u8');
   assert.equal(list.channels[1].customUrl, 'http://tv.local/b.m3u8');
   assert.equal(list.channels[0].providerId, null);
+});
+
+test('channel languages can be filtered by name or code', () => {
+  assert.equal(languageKey('Bengali'), 'bangla');
+  assert.equal(languageKey('bn'), 'bangla');
+  assert.equal(languageKey('HIN'), 'hindi');
+  assert.equal(languageKey('English '), 'english');
+  assert.equal(languageKey(''), '');
+  assert.equal(languageKey('Klingon'), 'klingon');
+
+  const channels = [
+    { id: 'a', language: 'Bengali' },
+    { id: 'b', language: 'Hindi' },
+    { id: 'c', language: 'English' },
+    { id: 'd', language: 'Tamil' },
+    { id: 'e', language: 'ben' },
+    { id: 'f', language: '' },
+  ];
+  const kept = filterByLanguages(channels, ['Bangla', 'English', 'Hindi']);
+  assert.deepEqual(kept.channels.map((channel) => channel.id), ['a', 'b', 'c', 'e']);
+  assert.deepEqual(kept.removed.map((channel) => channel.id), ['d', 'f']);
+  assert.equal(filterByLanguages(channels, []).channels.length, 6);
 });

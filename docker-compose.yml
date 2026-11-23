@@ -22,6 +22,8 @@ services:
       CHANNELS_URL: ${CHANNELS_URL:-https://tv.home.mangalvedhe.in/playlist.m3u?q=high}
       CHANNELS_REFRESH_MS: ${CHANNELS_REFRESH_MS:-0}
       CHANNELS_CACHE_FILE: /app/.cache/channels.m3u
+      # Bangla, English and Hindi channels only (empty = everything).
+      CHANNEL_LANGUAGES: ${CHANNEL_LANGUAGES:-Bengali,Bangla,English,Hindi}
       HIGH_FIRST_CUSTOM_URLS: ${HIGH_FIRST_CUSTOM_URLS:-true}
       DASH_TO_HLS: ${DASH_TO_HLS:-true}
       SKIP_DASH: ${SKIP_DASH:-false}
