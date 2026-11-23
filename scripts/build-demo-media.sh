@@ -43,9 +43,14 @@ encode () {
   local height="$1" crf="$2"
   local dir="$OUT/${height}p"
   echo "==> HLS ${height}p"
+  # Silent audio is muxed into every variant as well: the alternate audio
+  # renditions stay the primary path, but a player that ignores EXT-X-MEDIA
+  # still gets a complete stream.
   "$FFMPEG" -hide_banner -loglevel error -y -i "$TMP/source.mp4" \
+    -f lavfi -i "anullsrc=r=48000:cl=stereo" -shortest \
     -vf "scale=-2:${height}:flags=bicubic,drawtext=fontfile='${FONT}':text='${height}p':x=w-tw-40:y=h-80:fontsize=40:fontcolor=0x16c98d" \
     -c:v libx264 -preset veryfast -tune stillimage -crf "$crf" -pix_fmt yuv420p \
+    -c:a aac -b:a 32k -ac 2 \
     -g 24 -keyint_min 24 -sc_threshold 0 -force_key_frames "expr:gte(t,n_forced*2)" \
     -f hls -hls_time 2 -hls_list_size 0 -hls_playlist_type vod \
     -hls_segment_filename "$dir/seg%d.ts" "$dir/index.m3u8"
