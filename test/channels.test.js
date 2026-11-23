@@ -98,4 +98,27 @@ test('upstream URLs are high-only, even for hand-written channel URLs', () => {
   assert.equal(upstream.masterUrl({ id: 'b', customUrl: 'http://cdn/live/medium/9.m3u8?q=1' }, 'high'), 'http://cdn/live/high/9.m3u8?q=1');
   assert.equal(upstream.masterUrl({ id: 'c', customUrl: 'http://cdn/live/high/9.m3u8' }, 'high'), 'http://cdn/live/high/9.m3u8');
   assert.equal(upstream.masterUrl({ id: 'd', customUrl: 'https://cdn.example/{id}/master.m3u8', providerId: '55' }, 'high'), 'https://cdn.example/55/master.m3u8');
+
+  // A JioTV-Go playlist URL without a quality segment is promoted to /high/,
+  // with the original kept as the emergency fallback.
+  const promoted = { id: 'e', customUrl: 'http://tv.local/live/144.m3u8' };
+  assert.equal(upstream.masterUrl(promoted, 'high'), 'http://tv.local/live/high/144.m3u8');
+  assert.deepEqual(upstream.customUrlCandidates(promoted), [
+    'http://tv.local/live/high/144.m3u8',
+    'http://tv.local/live/144.m3u8',
+  ]);
+  // Forbidden quality paths never come back as a fallback.
+  assert.deepEqual(upstream.customUrlCandidates({ id: 'f', customUrl: 'http://tv.local/live/low/9.m3u8' }), [
+    'http://tv.local/live/high/9.m3u8',
+  ]);
+});
+
+test('relative stream URLs resolve against the playlist URL', () => {
+  const list = parseChannelList(
+    ['#EXTM3U', '#EXTINF:-1 tvg-id="a" group-title="News",A', '/live/high/a.m3u8', '#EXTINF:-1,B', './b.m3u8'].join('\n'),
+    { baseUrl: 'http://tv.local/playlist.m3u?q=high' },
+  );
+  assert.equal(list.channels[0].customUrl, 'http://tv.local/live/high/a.m3u8');
+  assert.equal(list.channels[1].customUrl, 'http://tv.local/b.m3u8');
+  assert.equal(list.channels[0].providerId, null);
 });

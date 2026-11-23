@@ -29,6 +29,31 @@ Personal live TV for 100+ channels, built for **ultra-fast start**, not low late
 
 ---
 
+## বাংলা — দ্রুত শুরু
+
+```bash
+cp .env.example .env      # CHANNELS_URL ইতিমধ্যেই আপনার সার্ভারে সেট করা
+docker compose up -d
+```
+
+ব্রাউজারে `http://সার্ভার-IP:3000` খুলুন।
+
+- **প্যানেল বাংলায়** — ডিফল্ট ভাষা বাংলা, উপরে `EN` বাটনে এক ট্যাপে ইংরেজি (পছন্দ
+  `localStorage`-এ থাকে)।
+- **চ্যানেল লিস্ট নিজে থেকেই আসে** আপনার JioTV Go সার্ভার থেকে:
+  `CHANNELS_URL=https://tv.home.mangalvedhe.in/playlist.m3u?q=high`। সার্ভারে পৌঁছানো
+  না গেলে রিলে `channels.m3u` ফাইলটি ব্যবহার করে (বুট লগে কারণ দেখায়)।
+  নতুন চ্যানেল যোগ হলে `docker compose restart relay` অথবা
+  `curl -X POST http://সার্ভার-IP:3000/api/sync`।
+- **অডিও** — বাংলা ডিফল্ট, হিন্দি ব্যাকআপ; **কোয়ালিটি** — শুধু 720p (শুরু) আর 1080p।
+- **ব্যান্ডউইথ** — ভিডিও সেগমেন্ট কখনো সার্ভার দিয়ে যায় না, প্লেয়ার সরাসরি CDN
+  থেকে 302 রিডাইরেক্টে নেয়। ১০০ চ্যানেল চালালেও সেগমেন্ট ট্রাফিক 0 Mbps।
+
+> প্যানেল/প্লেলিস্ট লিংক: `http://সার্ভার-IP:3000/`, `…/playlist.m3u?q=high`,
+> `…/api/status`। VLC / TiviMate-এ প্লেলিস্ট লিংক বসিয়ে টিভিতেও চালানো যায়।
+
+---
+
 ## Quick start
 
 ### 1. Production (your own upstream)
@@ -45,6 +70,19 @@ Open `http://SERVER-IP:3000`.
 `UPSTREAM_BASE` is the server that already speaks the JioTV-Go style endpoints
 (`/live/high/<id>.m3u8`). If your channels already have absolute `https://…m3u8`
 URLs, you can skip `UPSTREAM_BASE` completely.
+
+**Channel list from your own JioTV-Go server** — set `CHANNELS_URL` and the relay
+reads the list at boot (and every `CHANNELS_REFRESH_MS`, or on `POST /api/sync`):
+
+```bash
+CHANNELS_URL=https://tv.home.mangalvedhe.in/playlist.m3u?q=high
+```
+
+Both `…/playlist.m3u` and `…/playlist.m3u?q=high` work; the relay itself always
+streams via `/live/high/<id>.m3u8`. `channels.m3u` is only the fallback when the
+URL is unreachable, so the panel keeps working offline. Playlist URLs without a
+quality segment (`/live/<id>.m3u8`) are promoted to `/live/high/<id>.m3u8`, with
+the original kept as the emergency fallback (`HIGH_FIRST_CUSTOM_URLS=true`).
 
 ### 2. Offline demo (no upstream needed)
 
@@ -95,6 +133,7 @@ templates are also accepted. Editing `channels.m3u` on disk hot-reloads the list
 | Category chips | built from `group-title`, Bangla groups first |
 | Favorites | `localStorage`, star on each card |
 | Last channel auto-play | restores on load, shows a Resume button if autoplay is blocked |
+| Language | Bangla by default, `EN` toggle in the header (`m3ip.lang`) |
 | Quality switch | Auto (720p start, upgrades to 1080p) / 720p / 1080p |
 | Audio switch | Bangla default, Hindi backup |
 | Picture-in-Picture | button appears where supported |
@@ -142,7 +181,8 @@ Player config is the PRD's fast-start profile: `maxBufferLength: 2`,
 | `GET /api/channels/<id>` | one channel + parsed filter plan |
 | `GET /api/status` | warmer, cache and counter telemetry (open the panel footer link) |
 | `GET /api/debug/channel?id=<id>` | fetches the origin live and shows exactly what was kept/dropped |
-| `POST /api/reload` | re-read `CHANNELS_FILE` |
+| `POST /api/reload` | re-read `CHANNELS_FILE` / re-sync `CHANNELS_URL` |
+| `POST /api/sync` | same as `/api/reload`, returns the active source + channel count |
 | `GET /health` | 200 when ≥ 50 % of channels are warm (`HEALTH_WARM_RATIO`) |
 
 Manifest responses carry `Cache-Control: no-cache`, `Access-Control-Allow-Origin: *`,
@@ -169,6 +209,11 @@ Everything is environment-driven; see `.env.example` for the annotated list.
 | `TOKEN_URL` / `TOKEN_FIELD` / `TOKEN_HEADER` / `TOKEN_QUERY` | — | per-channel token provider with TTL and forced refresh on 401/403 |
 | `TOKEN_APPEND_SEGMENTS` | `false` | append the token to segment URLs (off by default; signed CDN URLs usually break) |
 | `CHANNELS_FILE` | `channels.m3u` | channel list (hot-reloaded) |
+| `CHANNELS_URL` | — | fetch the list from your JioTV-Go server (takes precedence; file is the fallback) |
+| `CHANNELS_REFRESH_MS` | `0` | re-sync interval for `CHANNELS_URL` (0 = boot only / `/api/sync`) |
+| `CHANNELS_URL_TIMEOUT_MS` | `8000` | timeout for the channel-list fetch |
+| `CHANNELS_URL_HEADERS` | — | JSON headers for the channel-list fetch |
+| `HIGH_FIRST_CUSTOM_URLS` | `true` | promote `/live/<id>.m3u8` to `/live/high/<id>.m3u8` |
 | `WARMER_ENABLED` / `WARMER_INTERVAL_MS` / `WARMER_CONCURRENCY` | `true` / `2000` / `24` | warmer loop |
 | `CACHE_TTL_MS` / `STALE_SERVE_MS` | `2500` / `15000` | fresh window + stale-while-revalidate window |
 | `MEDIA_CACHE_TTL_MS` | `1200` | variant playlist micro-cache |
@@ -207,7 +252,7 @@ concurrency 24 (`node server.js`, Docker-ready build):
 | Segment bytes through the relay | 0 in `redirect` / `direct` |
 | Output ladder | exactly `720p` then `1080p` (or one best rung for SD-only sources) |
 | Output audio | Bangla `DEFAULT=YES` + Hindi `AUTOSELECT=YES`, nothing else |
-| Test suite | 39 tests, ~1.6 s (`npm test`) |
+| Test suite | 41 tests, ~1.8 s (`npm test`) |
 
 HLS.js still decides when to jump to 1080p (ABR), because transcoding is off and
 the relay must not lie about the bitrate. The start is pinned to 720p, which is
@@ -219,7 +264,7 @@ what removes the ABR ladder-decision delay from the click path.
 
 ```bash
 npm test
-# 39 tests: manifest filtering, audio policy, URL rewriting, 302 signing,
+# 41 tests: manifest filtering, audio policy, URL rewriting, 302 signing,
 # direct/proxy modes, token injection, fallback, panel serving.
 
 npm run demo

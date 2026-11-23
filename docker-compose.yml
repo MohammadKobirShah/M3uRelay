@@ -17,6 +17,11 @@ services:
       PORT: "3000"
       HOST: 0.0.0.0
       CHANNELS_FILE: ${CHANNELS_FILE:-channels.m3u}
+      # Auto-sync the channel list from your JioTV-Go server; channels.m3u is
+      # the fallback when the URL is unreachable (e.g. container cannot see the LAN host).
+      CHANNELS_URL: ${CHANNELS_URL:-https://tv.home.mangalvedhe.in/playlist.m3u?q=high}
+      CHANNELS_REFRESH_MS: ${CHANNELS_REFRESH_MS:-0}
+      HIGH_FIRST_CUSTOM_URLS: ${HIGH_FIRST_CUSTOM_URLS:-true}
       UPSTREAM_BASE: ${UPSTREAM_BASE:-}
       UPSTREAM_HIGH_PATH: ${UPSTREAM_HIGH_PATH:-/live/high/{id}.m3u8}
       UPSTREAM_AUTO_PATH: ${UPSTREAM_AUTO_PATH:-/live/{id}.m3u8}

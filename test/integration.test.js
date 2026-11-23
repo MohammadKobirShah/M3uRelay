@@ -371,3 +371,37 @@ test('proxy mode streams segment bytes through the relay (fallback only)', async
   assert.equal(bytes.length, 1880);
   assert.equal(bytes[0], 0x47);
 });
+
+test('channel list syncs from the upstream playlist (JioTV-Go style)', async (t) => {
+  const origin = await startMockOrigin({ latencyMs: 5 });
+  const relay = await startRelay({ origin, env: { CHANNELS_URL: `${origin.url}/playlist.m3u?q=high` } });
+  t.after(async () => {
+    await relay.stop();
+    await origin.close();
+  });
+
+  const channels = await (await fetch(`${relay.base}/api/channels`)).json();
+  assert.equal(channels.total, 3);
+  assert.deepEqual(
+    channels.channels.map((channel) => channel.id).sort(),
+    ['enc', 'news', 'sd'],
+  );
+  assert.equal(channels.channels.find((channel) => channel.id === 'news').group, 'Bangla News');
+  // A relative entry in the upstream playlist is resolved against CHANNELS_URL,
+  // so it resolves to the mock origin's own /live/high/sd.m3u8 (SD: one rung).
+  const sdMaster = await (await fetch(`${relay.base}/live/high/sd.m3u8`)).text();
+  assert.equal((sdMaster.match(/#EXT-X-STREAM-INF/g) || []).length, 1);
+
+  const master = await (await fetch(`${relay.base}/live/high/news.m3u8`)).text();
+  assert.equal((master.match(/#EXT-X-STREAM-INF/g) || []).length, 2);
+  assert.match(master, /RESOLUTION=1280x720/);
+
+  const status = await (await fetch(`${relay.base}/api/status`)).json();
+  assert.equal(status.channelsSource.kind, 'url');
+  assert.equal(status.channelsSource.url, `${origin.url}/playlist.m3u?q=high`);
+
+  const sync = await (await fetch(`${relay.base}/api/sync`, { method: 'POST' })).json();
+  assert.equal(sync.ok, true);
+  assert.equal(sync.source, 'url');
+  assert.equal(sync.channels, 3);
+});

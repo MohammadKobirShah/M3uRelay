@@ -218,6 +218,24 @@ export function startMockOrigin({ port = 0, host = '127.0.0.1', latencyMs = 15, 
       send(res, 200, JSON.stringify(stats), 'application/json');
       return;
     }
+    if (pathname === '/playlist.m3u' || pathname === '/playlist.m3u8') {
+      const host = req.headers.host || `127.0.0.1`;
+      const entries = [
+        { id: 'news', name: 'News Channel', group: 'Bangla News' },
+        { id: 'sd', name: 'SD Channel', group: 'Bangla Entertainment' },
+        { id: 'enc', name: 'Encrypted Channel', group: 'Movies' },
+      ];
+      const lines = ['#EXTM3U'];
+      for (const entry of entries) {
+        lines.push(`#EXTINF:-1 tvg-id="${entry.id}" group-title="${entry.group}" tvg-language="Bangla",${entry.name}`);
+        // The middle entry is relative on purpose: JioTV-Go playlists sometimes are.
+        lines.push(
+          entry.id === 'sd' ? `/live/high/${entry.id}.m3u8` : `http://${host}/live/high/${entry.id}.m3u8`,
+        );
+      }
+      send(res, 200, `${lines.join('\n')}\n`);
+      return;
+    }
     if (pathname === '/__token') {
       send(res, 200, JSON.stringify({ token: 'mock-token', channel: url.searchParams.get('channel') }), 'application/json');
       return;

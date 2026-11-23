@@ -539,10 +539,17 @@ async function router(req, res) {
     handleStatus(req, res);
     return;
   }
-  if (pathname === '/api/reload' && (req.method === 'POST' || req.method === 'GET')) {
+  if ((pathname === '/api/reload' || pathname === '/api/sync') && (req.method === 'POST' || req.method === 'GET')) {
     try {
       await relay.loadChannels();
-      sendJson(req, res, 200, { ok: true, channels: relay.channels.length });
+      relay.access.clear();
+      sendJson(req, res, 200, {
+        ok: true,
+        channels: relay.channels.length,
+        source: relay.channelSource,
+        url: relay.channelSource === 'url' ? config.channelsUrl : null,
+        syncError: relay.channelSyncError,
+      });
     } catch (error) {
       sendJson(req, res, 500, { ok: false, error: error.message });
     }
@@ -643,7 +650,12 @@ async function main() {
     logger.info(`panel      ${shown}/`);
     logger.info(`playlist   ${shown}/playlist.m3u?q=high`);
     logger.info(`manifest   ${shown}/live/high/<channel>.m3u8`);
-    logger.info(`channels   ${relay.channels.length} from ${config.channelsFile}`);
+    logger.info(
+      `channels   ${relay.channels.length} from ${
+        relay.channelSource === 'url' ? config.channelsUrl : config.channelsFile
+      }`,
+    );
+    if (config.channelsUrl) logger.info(`sync       ${config.channelsUrl}${config.channelsRefreshMs ? ` every ${config.channelsRefreshMs}ms` : ''}`);
     if (config.upstreamBase) logger.info(`upstream   ${config.upstreamBase}${config.upstreamHighPath}`);
   });
 

@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="bn">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <meta name="theme-color" content="#07100d" />
-<title>MY IPTV PRO — Live TV</title>
-<meta name="description" content="150 live channels. High-only HLS manifests, 720p/1080p, Bangla audio first. Segments stream direct from the CDN." />
+<title>MY IPTV PRO — লাইভ টিভি</title>
+<meta name="description" content="লাইভ টিভি — হাই-অনলি HLS ম্যানিফেস্ট, 720p/1080p, আগে বাংলা অডিও। সেগমেন্ট সরাসরি CDN থেকে আসে।" />
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2316c98d'/%3E%3Cpath d='M20 40V24l12 8 12-8v16l-12-8z' fill='%2307100d'/%3E%3C/svg%3E" />
 <style>
   :root {
@@ -312,27 +312,28 @@
     </div>
     <div class="brand-text">
       <span class="brand-title">MY IPTV PRO</span>
-      <span class="brand-sub">high-only relay · 720p/1080p · Bangla first</span>
+      <span class="brand-sub" data-i18n="brandSub">হাই-অনলি রিলে · 720p/1080p · আগে বাংলা অডিও</span>
     </div>
   </div>
 
   <div class="search">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
-    <input id="search" type="search" placeholder="Search channels…" autocomplete="off" spellcheck="false" aria-label="Search channels" />
+    <input id="search" type="search" placeholder="চ্যানেল খুঁজুন…" data-i18n-placeholder="search" autocomplete="off" spellcheck="false" aria-label="চ্যানেল খুঁজুন" />
     <kbd>/</kbd>
   </div>
 
   <div class="actions">
     <button class="btn" id="favBtn" aria-pressed="false">
       <svg viewBox="0 0 24 24" fill="currentColor"><path d="m12 3.6 2.5 5.2 5.7.8-4.1 4 1 5.7-5.1-2.7-5.1 2.7 1-5.7-4.1-4 5.7-.8z"/></svg>
-      Favorites <span class="pill" id="favCount">0</span>
+      <span data-i18n="favorites">প্রিয়</span> <span class="pill" id="favCount">0</span>
     </button>
     <button class="btn" id="copyBtn">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M6 15H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v1"/></svg>
-      Copy M3U
+      <span data-i18n="copyM3u">M3U কপি</span>
     </button>
+    <button class="btn" id="langBtn" title="Switch language / ভাষা বদলান" aria-label="Switch language">EN</button>
     <div class="status" title="Manifest warmer status">
-      <span class="dot" id="statusDot"></span><span id="statusText">connecting…</span>
+      <span class="dot" id="statusDot"></span><span id="statusText" data-i18n="statusConnecting">সংযোগ হচ্ছে…</span>
     </div>
   </div>
 </header>
@@ -351,11 +352,11 @@
         </div>
         <div class="resume" id="resumeOverlay">
           <div>
-            <h3 id="resumeTitle">Ready to play</h3>
-            <p>Your browser blocked autoplay. Tap to start instantly at 720p.</p>
+            <h3 id="resumeTitle">চালু করতে চাপ দিন</h3>
+            <p id="resumeBody">ব্রাউজার অটোপ্লে বন্ধ রেখেছে। একবার চাপ দিলেই 720p-তে শুরু হবে।</p>
             <button id="resumeBtn">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-              Resume
+              <span data-i18n="resume">চালু করুন</span>
             </button>
           </div>
         </div>
@@ -364,34 +365,34 @@
 
       <div class="player-bar">
         <div class="now">
-          <span class="now-kicker">Now playing</span>
+          <span class="now-kicker" data-i18n="nowPlaying">চলছে</span>
           <h2 id="nowTitle">—</h2>
           <span class="now-meta" id="nowMeta">—</span>
         </div>
         <div class="controls">
-          <label class="field"><span>Quality</span>
+          <label class="field"><span data-i18n="quality">কোয়ালিটি</span>
             <select id="qualitySelect" aria-label="Quality">
-              <option value="auto">Auto · 720p start</option>
+              <option value="auto" data-i18n="autoQualityOpt">অটো · 720p থেকে শুরু</option>
             </select>
           </label>
-          <label class="field"><span>Audio</span>
+          <label class="field"><span data-i18n="audio">অডিও</span>
             <select id="audioSelect" aria-label="Audio track">
-              <option value="auto">Auto</option>
+              <option value="auto" data-i18n="autoAudio">অটো · বাংলা</option>
             </select>
           </label>
-          <button class="icon-btn" id="pipBtn" title="Picture in Picture" aria-label="Picture in Picture">
+          <button class="icon-btn" id="pipBtn" title="পিকচার-ইন-পিকচার" aria-label="পিকচার-ইন-পিকচার">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><rect x="12" y="12" width="7" height="5" rx="1" fill="currentColor" stroke="none"/></svg>
           </button>
-          <button class="icon-btn" id="reloadBtn" title="Reload stream" aria-label="Reload stream">
+          <button class="icon-btn" id="reloadBtn" title="স্ট্রিম রিলোড" aria-label="স্ট্রিম রিলোড">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 11a8 8 0 1 0-2.3 6.3"/><path d="M20 4v7h-7"/></svg>
           </button>
-          <button class="icon-btn" id="stopBtn" title="Stop" aria-label="Stop playback">
+          <button class="icon-btn" id="stopBtn" title="বন্ধ করুন" aria-label="বন্ধ করুন">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6 6 18"/></svg>
           </button>
         </div>
         <div class="perf">
-          <span class="video-chip" id="startStat">start —</span>
-          <span class="video-chip" id="bufferStat">buffer —</span>
+          <span class="video-chip" id="startStat">শুরু —</span>
+          <span class="video-chip" id="bufferStat">বাফার —</span>
         </div>
       </div>
     </div>
@@ -409,7 +410,7 @@
 
 <footer>
   <div class="facts">
-    <span><b>Manifest-only relay</b> · segments never touch the server</span>
+    <span><b data-i18n="footerFactBold">ম্যানিফেস্ট-অনলি রিলে</b><span data-i18n="footerFactRest"> · সেগমেন্ট সার্ভারে আসে না</span></span>
     <span id="footerChannels">— channels</span>
     <span id="footerWarm">— warm</span>
   </div>
@@ -431,7 +432,147 @@
     last: 'm3ip.lastChannel',
     quality: 'm3ip.quality',
     category: 'm3ip.category',
+    lang: 'm3ip.lang',
   };
+
+  /* ------------------------------------------------------------------ */
+  /* language (Bangla first, English one tap away)                       */
+  /* ------------------------------------------------------------------ */
+  const I18N = {
+    bn: {
+      docTitle: 'MY IPTV PRO — লাইভ টিভি',
+      brandSub: 'হাই-অনলি রিলে · 720p/1080p · আগে বাংলা অডিও',
+      search: 'চ্যানেল খুঁজুন…',
+      favorites: 'প্রিয়',
+      copyM3u: 'M3U কপি',
+      langTitle: 'ভাষা বদলান',
+      statusConnecting: 'সংযোগ হচ্ছে…',
+      nowPlaying: 'চলছে',
+      quality: 'কোয়ালিটি',
+      audio: 'অডিও',
+      pip: 'পিকচার-ইন-পিকচার',
+      reload: 'স্ট্রিম রিলোড',
+      stop: 'বন্ধ করুন',
+      resume: 'চালু করুন',
+      resumeBody: 'ব্রাউজার অটোপ্লে বন্ধ রেখেছে। একবার চাপ দিলেই 720p-তে শুরু হবে।',
+      resumeTitleWith: 'চালু করুন — {name}',
+      reconnectBody: 'রিলে বা নেটওয়ার্কে সমস্যা হয়েছে। আবার চেষ্টা করুন।',
+      allChannels: 'সব চ্যানেল',
+      favoritesChip: '★ প্রিয়',
+      count: '{visible} / {total} টি',
+      warmStatus: '{warmed}/{total} প্রস্তুত',
+      offline: 'সার্ভারে পৌঁছানো যাচ্ছে না',
+      live: 'লাইভ',
+      down: 'বন্ধ',
+      sync: 'সিঙ্ক',
+      autoQualityOpt: 'অটো · 720p থেকে শুরু',
+      autoAudio: 'অটো · বাংলা',
+      levelStart: ' · শুরু',
+      started: '⚡ শুরু {value}',
+      startPending: 'শুরু —',
+      bufferPending: 'বাফার —',
+      buffer: 'বাফার {value}',
+      reconnecting: 'আবার সংযোগ… ({n})',
+      recoverToast: 'ভিডিও ডিকোডার ঠিক করা হচ্ছে…',
+      reconnectToast: 'নেটওয়ার্ক সমস্যা — আবার চেষ্টা করছি',
+      streamUnavailable: 'স্ট্রিম চালু হলো না',
+      streamUnavailableWith: '{name} চালু হলো না',
+      qualityAutoToast: 'অটো কোয়ালিটি — 720p থেকে শুরু, নেট ভালো হলে 1080p',
+      qualityLockedToast: '{value}-এ লক করা হলো',
+      audioAutoToast: 'অটো অডিও — আগে বাংলা, ব্যাকআপ হিন্দি',
+      audioSetToast: 'অডিও: {value}',
+      copyToast: 'প্লেলিস্ট লিংক কপি হয়েছে — VLC বা TiviMate-এ পেস্ট করুন',
+      copyPrompt: 'এই প্লেলিস্ট লিংক কপি করুন:',
+      reloadToast: 'স্ট্রিম রিলোড হচ্ছে…',
+      pipUnsupported: 'এই ব্রাউজারে পিকচার-ইন-পিকচার নেই',
+      pipFailed: 'এই স্ট্রিমে পিকচার-ইন-পিকচার পাওয়া গেল না',
+      tapToStart: 'ভিডিওতে চাপ দিয়ে শুরু করুন',
+      playbackErrorToast: 'চালাতে সমস্যা — আবার চেষ্টা করছি',
+      noMatchTitle: 'কোনো চ্যানেল মেলেনি',
+      noMatchBody: 'অন্য কিছু লিখুন বা ক্যাটাগরি বদলান।',
+      loadErrorTitle: 'চ্যানেল লিস্ট লোড হয়নি',
+      loadErrorBody: 'রিলে থেকে ভুল উত্তর এসেছে ({message})।',
+      retry: 'আবার চেষ্টা',
+      hlsUnsupportedToast: 'এই ব্রাউজারে HLS চলবে না',
+      hlsUnsupportedTitle: 'এখানে HLS চলবে না',
+      hlsUnsupportedBody: 'Chrome, Edge, Safari বা Firefox-এ খুলুন।',
+      footerFactBold: 'ম্যানিফেস্ট-অনলি রিলে',
+      footerFactRest: ' · সেগমেন্ট সার্ভারে আসে না',
+      channelsLabel: '{n} চ্যানেল',
+      warmFooter: '{n} ম্যানিফেস্ট প্রস্তুত · {mode} সেগমেন্ট',
+    },
+    en: {
+      docTitle: 'MY IPTV PRO — Live TV',
+      brandSub: 'high-only relay · 720p/1080p · Bangla first',
+      search: 'Search channels…',
+      favorites: 'Favorites',
+      copyM3u: 'Copy M3U',
+      langTitle: 'Switch language',
+      statusConnecting: 'connecting…',
+      nowPlaying: 'Now playing',
+      quality: 'Quality',
+      audio: 'Audio',
+      pip: 'Picture in Picture',
+      reload: 'Reload stream',
+      stop: 'Stop',
+      resume: 'Resume',
+      resumeBody: 'Your browser blocked autoplay. Tap to start instantly at 720p.',
+      resumeTitleWith: 'Resume {name}',
+      reconnectBody: 'The relay or the network had a problem. Try again.',
+      allChannels: 'All channels',
+      favoritesChip: '★ Favorites',
+      count: '{visible} of {total}',
+      warmStatus: '{warmed}/{total} warm',
+      offline: 'offline',
+      live: 'LIVE',
+      down: 'DOWN',
+      sync: 'SYNC',
+      autoQualityOpt: 'Auto · 720p start',
+      autoAudio: 'Auto · Bangla',
+      levelStart: ' · start',
+      started: '⚡ {value} start',
+      startPending: 'start —',
+      bufferPending: 'buffer —',
+      buffer: 'buffer {value}',
+      reconnecting: 'reconnecting… ({n})',
+      recoverToast: 'Recovering video decoder…',
+      reconnectToast: 'Network hiccup — retrying',
+      streamUnavailable: 'Stream unavailable',
+      streamUnavailableWith: 'Could not start {name}',
+      qualityAutoToast: 'Auto quality — starts at 720p, upgrades to 1080p when bandwidth allows',
+      qualityLockedToast: 'Locked to {value}',
+      audioAutoToast: 'Auto audio — Bangla first, Hindi backup',
+      audioSetToast: 'Audio: {value}',
+      copyToast: 'Playlist URL copied — paste it into VLC or TiviMate',
+      copyPrompt: 'Copy this playlist URL:',
+      reloadToast: 'Reloading stream…',
+      pipUnsupported: 'Picture-in-Picture is not supported here',
+      pipFailed: 'Picture-in-Picture unavailable for this stream',
+      tapToStart: 'Tap the video to start',
+      playbackErrorToast: 'Playback error — retrying',
+      noMatchTitle: 'No channels match',
+      noMatchBody: 'Try a different search or category.',
+      loadErrorTitle: 'Cannot load channel list',
+      loadErrorBody: 'The relay answered with an error ({message}).',
+      retry: 'Retry',
+      hlsUnsupportedToast: 'This browser cannot play HLS',
+      hlsUnsupportedTitle: 'HLS is not supported here',
+      hlsUnsupportedBody: 'Open the panel in Chrome, Edge, Safari, or Firefox.',
+      footerFactBold: 'Manifest-only relay',
+      footerFactRest: ' · segments never touch the server',
+      channelsLabel: '{n} channels',
+      warmFooter: '{n} manifests warm · {mode} segments',
+    },
+  };
+
+  function t(key, vars) {
+    const table = I18N[state.lang] || I18N.bn;
+    let text = table[key] !== undefined ? table[key] : I18N.bn[key] !== undefined ? I18N.bn[key] : key;
+    if (vars) {
+      for (const [name, value] of Object.entries(vars)) text = text.split(`{${name}}`).join(String(value));
+    }
+    return text;
+  }
 
   const HLS_CONFIG = {
     // PRD §11 — tuned for "click to play" speed, not low latency.
@@ -473,6 +614,10 @@
     playingSince: 0,
     lastStats: null,
     destroyed: false,
+    lang: (() => {
+      const stored = readStore(STORE.lang, 'bn');
+      return stored === 'en' ? 'en' : 'bn';
+    })(),
   };
 
   const $ = (selector) => document.querySelector(selector);
@@ -486,6 +631,8 @@
     favBtn: $('#favBtn'),
     favCount: $('#favCount'),
     copyBtn: $('#copyBtn'),
+    langBtn: $('#langBtn'),
+    resumeBody: $('#resumeBody'),
     statusDot: $('#statusDot'),
     statusText: $('#statusText'),
     footerChannels: $('#footerChannels'),
@@ -534,10 +681,10 @@
     return String(value == null ? '' : value).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
   function statusTag(status) {
-    if (status === 'error') return { label: 'DOWN', cls: 'error' };
-    if (status === 'stale') return { label: 'LIVE', cls: 'warn' };
-    if (status === 'pending') return { label: 'SYNC', cls: 'pending' };
-    return { label: 'LIVE', cls: '' };
+    if (status === 'error') return { label: t('down'), cls: 'error' };
+    if (status === 'stale') return { label: t('live'), cls: 'warn' };
+    if (status === 'pending') return { label: t('sync'), cls: 'pending' };
+    return { label: t('live'), cls: '' };
   }
   function initials(name) {
     const parts = String(name || '?').replace(/[^\p{L}\p{N}\s&+]/gu, ' ').trim().split(/\s+/).filter(Boolean);
@@ -579,7 +726,10 @@
       setInterval(refreshChannelMeta, 60000);
     } catch (error) {
       els.skeleton.hidden = true;
-      showEmpty('Cannot load channel list', `The relay answered with an error (${escapeHtml(error.message)}). <button class="btn" onclick="location.reload()">Retry</button>`);
+      showEmpty(
+        t('loadErrorTitle'),
+        `${t('loadErrorBody', { message: escapeHtml(error.message) })} <button class="btn" onclick="location.reload()">${escapeHtml(t('retry'))}</button>`,
+      );
     }
   }
 
@@ -643,8 +793,8 @@
   function renderChips() {
     const favoritesCount = state.favorites.size;
     const chips = [
-      { key: 'all', label: 'All channels', n: state.channels.length },
-      { key: 'favorites', label: '★ Favorites', n: favoritesCount },
+      { key: 'all', label: t('allChannels'), n: state.channels.length },
+      { key: 'favorites', label: t('favoritesChip'), n: favoritesCount },
       ...state.groups.map((group) => ({ key: group.name, label: group.name, n: group.count })),
     ];
     if (!chips.some((chip) => chip.key === state.category)) state.category = 'all';
@@ -707,10 +857,10 @@
       card.hidden = !show;
       if (show) visible += 1;
     }
-    els.count.textContent = `${visible} of ${state.channels.length}`;
+    els.count.textContent = t('count', { visible, total: state.channels.length });
     if (!state.channels.length) return;
     if (visible === 0) {
-      showEmpty('No channels match', `Try a different search or category.`);
+      showEmpty(t('noMatchTitle'), t('noMatchBody'));
     } else {
       els.empty.hidden = true;
     }
@@ -767,8 +917,8 @@
     els.nowMeta.textContent = `${channel.group}${channel.language ? ` · ${channel.language}` : ''}${channel.defaultAudio ? ` · audio: ${channel.defaultAudio}` : ''}`;
     els.resume.classList.remove('show');
     els.spinner.classList.add('show');
-    els.startStat.textContent = 'start —';
-    els.bufferStat.textContent = 'buffer —';
+    els.startStat.textContent = t('startPending');
+    els.bufferStat.textContent = t('bufferPending');
     els.latencyChip.textContent = '—';
     els.levelChip.textContent = (channel.qualities || [])[0] || 'HD';
     els.audioChip.textContent = channel.defaultAudio || 'Auto';
@@ -796,7 +946,9 @@
       els.spinner.classList.remove('show');
       els.resume.classList.remove('show');
       const elapsed = state.playingSince - state.startMark;
-      els.startStat.textContent = `⚡ ${elapsed < 1000 ? `${Math.round(elapsed)} ms` : `${(elapsed / 1000).toFixed(2)} s`} start`;
+      els.startStat.textContent = t('started', {
+        value: elapsed < 1000 ? `${Math.round(elapsed)} ms` : `${(elapsed / 1000).toFixed(2)} s`,
+      });
       state.reconnectAttempts = 0;
     };
     els.video.addEventListener('playing', started, { once: true });
@@ -835,15 +987,16 @@
       attachNative();
     } else {
       els.spinner.classList.remove('show');
-      toast('This browser cannot play HLS', 'error');
-      showEmpty('HLS is not supported here', 'Open the panel in Chrome, Edge, Safari, or Firefox (with HLS.js available).');
+      toast(t('hlsUnsupportedToast'), 'error');
+      showEmpty(t('hlsUnsupportedTitle'), t('hlsUnsupportedBody'));
     }
     if (user) window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   function handleAutoplayBlocked() {
     els.resume.classList.add('show');
-    els.resumeTitle.textContent = state.current ? `Resume ${state.current.name}` : 'Ready to play';
+    els.resumeTitle.textContent = state.current ? t('resumeTitleWith', { name: state.current.name }) : t('resume');
+    els.resumeBody.textContent = t('resumeBody');
     els.spinner.classList.remove('show');
   }
 
@@ -853,7 +1006,7 @@
     const type = data.type;
 
     if (type === Hls.ErrorTypes.MEDIA_ERROR) {
-      toast('Recovering video decoder…');
+      toast(t('recoverToast'));
       try {
         state.hls.recoverMediaError();
       } catch {
@@ -864,7 +1017,7 @@
 
     state.reconnectAttempts += 1;
     if (type === Hls.ErrorTypes.NETWORK_ERROR && state.reconnectAttempts <= 2) {
-      toast('Network hiccup — resuming stream');
+      toast(t('reconnectToast'));
       try {
         state.hls.startLoad();
       } catch {
@@ -879,14 +1032,15 @@
     if (state.reconnectAttempts > 6) {
       els.spinner.classList.remove('show');
       els.resume.classList.add('show');
-      els.resumeTitle.textContent = 'Stream unavailable';
-      toast(`Could not start ${channel.name} (${reason})`, 'error');
+      els.resumeTitle.textContent = t('streamUnavailable');
+      els.resumeBody.textContent = t('reconnectBody');
+      toast(t('streamUnavailableWith', { name: channel.name }), 'error');
       return;
     }
     const attempt = state.reconnectAttempts;
     const delay = Math.min(700 * attempt + 400, 4500);
     els.spinner.classList.add('show');
-    els.startStat.textContent = `reconnecting… (${attempt})`;
+    els.startStat.textContent = t('reconnecting', { n: attempt });
     setTimeout(() => {
       if (state.current && state.current.id === channel.id) {
         playChannel(channel.id, { autoplay: true, user: false, resetAttempts: false });
@@ -904,14 +1058,21 @@
   }
 
   function populateSelectors(levels, audioTracks) {
-    const qualityOptions = ['<option value="auto">Auto · 720p start</option>']
-      .concat(levels.map((level) => `<option value="${level.index}">${escapeHtml(level.label)}${level.index === 0 ? ' · start' : ''}</option>`))
+    const qualityOptions = [`<option value="auto">${escapeHtml(t('autoQualityOpt'))}</option>`]
+      .concat(
+        levels.map(
+          (level) =>
+            `<option value="${level.index}" data-label="${escapeHtml(level.label)}" data-start="${level.index === 0 ? '1' : '0'}">${
+              escapeHtml(level.label)
+            }${level.index === 0 ? escapeHtml(t('levelStart')) : ''}</option>`,
+        ),
+      )
       .join('');
     els.qualitySelect.innerHTML = qualityOptions;
     els.qualitySelect.value = state.quality === 'auto' ? 'auto' : String(findLevelIndex(levels, Number(state.quality)));
     if (els.qualitySelect.value === 'null' || els.qualitySelect.value === '-1') els.qualitySelect.value = 'auto';
 
-    const audioOptions = ['<option value="auto">Auto · Bangla</option>']
+    const audioOptions = [`<option value="auto">${escapeHtml(t('autoAudio'))}</option>`]
       .concat(
         (audioTracks || []).map(
           (track, index) => `<option value="${index}">${escapeHtml(track.name || track.lang || `Track ${index + 1}`)}</option>`,
@@ -979,22 +1140,62 @@
     }
   }
 
+  function renderStatus(status) {
+    state.lastStats = status;
+    const warmed = status.channels.warmed;
+    const total = status.channels.total;
+    els.statusDot.className = `dot ${warmed === 0 ? 'error' : warmed < total * 0.8 ? 'warn' : 'live'}`;
+    els.statusText.textContent = t('warmStatus', { warmed, total });
+    els.statusText.title = `warmer: ${status.warmer.lastRunMs}ms · ${status.warmer.intervalMs}ms`;
+    els.footerChannels.textContent = t('channelsLabel', { n: total });
+    els.footerWarm.textContent = t('warmFooter', { n: warmed, mode: status.upstream.segmentMode });
+  }
+
+  function applyLanguage() {
+    const lang = state.lang;
+    document.documentElement.lang = lang;
+    document.title = I18N[lang].docTitle;
+    for (const node of document.querySelectorAll('[data-i18n]')) {
+      node.textContent = t(node.dataset.i18n);
+    }
+    for (const node of document.querySelectorAll('[data-i18n-placeholder]')) {
+      node.placeholder = t(node.dataset.i18nPlaceholder);
+    }
+    els.langBtn.textContent = lang === 'bn' ? 'EN' : 'বাংলা';
+    els.langBtn.title = t('langTitle');
+    els.langBtn.setAttribute('aria-label', t('langTitle'));
+    for (const [node, key] of [[els.pipBtn, 'pip'], [els.reloadBtn, 'reload'], [els.stopBtn, 'stop']]) {
+      if (!node) continue;
+      node.title = t(key);
+      node.setAttribute('aria-label', t(key));
+    }
+    els.resumeBody.textContent = t('resumeBody');
+    els.search.setAttribute('aria-label', t('search'));
+    if (!state.current) {
+      els.startStat.textContent = t('startPending');
+      els.bufferStat.textContent = t('bufferPending');
+    }
+    for (const option of els.qualitySelect.options) {
+      if (option.value === 'auto') {
+        option.textContent = t('autoQualityOpt');
+      } else if (option.dataset && option.dataset.label) {
+        option.textContent = option.dataset.label + (option.dataset.start === '1' ? t('levelStart') : '');
+      }
+    }
+    if (els.audioSelect.options.length) els.audioSelect.options[0].textContent = t('autoAudio');
+    renderChips();
+    applyFilter();
+    if (state.lastStats) renderStatus(state.lastStats);
+    else els.statusText.textContent = t('statusConnecting');
+  }
+
   function pollStatus() {
     fetch('/api/status', { cache: 'no-store' })
       .then((response) => (response.ok ? response.json() : Promise.reject(new Error(`HTTP ${response.status}`))))
-      .then((status) => {
-        state.lastStats = status;
-        const warmed = status.channels.warmed;
-        const total = status.channels.total;
-        els.statusDot.className = `dot ${warmed === 0 ? 'error' : warmed < total * 0.8 ? 'warn' : 'live'}`;
-        els.statusText.textContent = `${warmed}/${total} warm`;
-        els.statusText.title = `warmer: ${status.warmer.lastRunMs}ms last round · every ${status.warmer.intervalMs}ms`;
-        els.footerChannels.textContent = `${total} channels`;
-        els.footerWarm.textContent = `${warmed} manifests warm · ${status.upstream.segmentMode} segments`;
-      })
+      .then(renderStatus)
       .catch(() => {
         els.statusDot.className = 'dot error';
-        els.statusText.textContent = 'offline';
+        els.statusText.textContent = t('offline');
       });
   }
 
@@ -1037,6 +1238,12 @@
     playChannel(card.dataset.id);
   });
 
+  els.langBtn.addEventListener('click', () => {
+    state.lang = state.lang === 'bn' ? 'en' : 'bn';
+    writeStore(STORE.lang, state.lang);
+    applyLanguage();
+  });
+
   els.favBtn.addEventListener('click', () => {
     state.category = state.category === 'favorites' ? 'all' : 'favorites';
     writeStore(STORE.category, state.category);
@@ -1049,9 +1256,9 @@
     const url = `${location.origin}/playlist.m3u?q=high`;
     try {
       await navigator.clipboard.writeText(url);
-      toast('Playlist URL copied — paste it into VLC or TiviMate');
+      toast(t('copyToast'));
     } catch {
-      window.prompt('Copy this playlist URL:', url);
+      window.prompt(t('copyPrompt'), url);
     }
   });
 
@@ -1062,12 +1269,12 @@
     if (value === 'auto') {
       state.quality = 'auto';
       hls.currentLevel = -1;
-      toast('Auto quality — starts at 720p, upgrades when bandwidth allows');
+      toast(t('qualityAutoToast'));
     } else {
       const level = (hls.levels || [])[Number(value)];
       state.quality = level && level.height ? String(level.height) : 'auto';
       hls.currentLevel = Number(value);
-      toast(`Locked to ${els.qualitySelect.selectedOptions[0].textContent}`);
+      toast(t('qualityLockedToast', { value: els.qualitySelect.selectedOptions[0].textContent }));
     }
     writeStore(STORE.quality, state.quality);
   });
@@ -1078,10 +1285,10 @@
     const value = els.audioSelect.value;
     if (value === 'auto') {
       selectBanglaAudio(hls);
-      toast('Auto audio — Bangla first, Hindi backup');
+      toast(t('audioAutoToast'));
     } else {
       hls.audioTrack = Number(value);
-      toast(`Audio: ${els.audioSelect.selectedOptions[0].textContent}`);
+      toast(t('audioSetToast', { value: els.audioSelect.selectedOptions[0].textContent }));
     }
   });
 
@@ -1089,23 +1296,23 @@
     try {
       if (document.pictureInPictureElement) await document.exitPictureInPicture();
       else if (els.video.requestPictureInPicture) await els.video.requestPictureInPicture();
-      else toast('Picture-in-Picture is not supported here');
+      else toast(t('pipUnsupported'));
     } catch {
-      toast('Picture-in-Picture unavailable for this stream');
+      toast(t('pipFailed'));
     }
   });
   if (!document.pictureInPictureEnabled) els.pipBtn.hidden = true;
 
   els.reloadBtn.addEventListener('click', () => {
     if (!state.current) return;
-    toast('Reloading stream…');
+    toast(t('reloadToast'));
     playChannel(state.current.id, { autoplay: true, user: false, resetAttempts: true });
   });
 
   els.stopBtn.addEventListener('click', stopPlayback);
   els.resumeBtn.addEventListener('click', () => {
     els.resume.classList.remove('show');
-    els.video.play().catch(() => toast('Tap the video to start', 'error'));
+    els.video.play().catch(() => toast(t('tapToStart'), 'error'));
   });
 
   document.addEventListener('keydown', (event) => {
@@ -1131,7 +1338,7 @@
     try {
       const end = video.buffered.end(video.buffered.length - 1);
       const ahead = Math.max(0, end - video.currentTime);
-      els.bufferStat.textContent = `buffer ${ahead.toFixed(1)}s`;
+      els.bufferStat.textContent = t('buffer', { value: `${ahead.toFixed(1)}s` });
     } catch {
       /* ignore */
     }
@@ -1141,13 +1348,14 @@
   els.video.addEventListener('playing', () => els.spinner.classList.remove('show'));
   els.video.addEventListener('error', () => {
     if (state.hls) return; // hls.js reports through its own error handler
-    toast('Playback error — retrying', 'error');
+    toast(t('playbackErrorToast'), 'error');
     if (state.current) scheduleReconnect(state.current, 'element');
   });
 
   window.addEventListener('beforeunload', destroyHls);
 
   /* kick off */
+  applyLanguage();
   updateFavoriteUI();
   if (!window.Hls) {
     const fallback = document.createElement('script');
