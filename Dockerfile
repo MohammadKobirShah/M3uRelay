@@ -16,6 +16,14 @@ COPY scripts ./scripts
 COPY demo ./demo
 COPY channels.m3u channels.demo.m3u ./
 
+# Runtime files: the channel-list cache and the generated playlist. /app belongs
+# to root, and the container runs as `node` (uid 1000), so both paths default to
+# the .cache directory created here with the right owner. Without this the relay
+# logs "EACCES: permission denied, open '/app/channels.generated.m3u.tmp'".
+RUN mkdir -p /app/.cache && chown -R node:node /app
+ENV CHANNELS_CACHE_FILE=/app/.cache/channels.m3u \
+    PLAYLIST_FILE=/app/.cache/playlist.m3u
+
 USER node
 EXPOSE 3000
 

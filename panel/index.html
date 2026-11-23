@@ -166,6 +166,8 @@
   .sheet-row code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; color: var(--text); }
   .sheet-error { margin: 0; padding: 8px 10px; border-radius: 8px; font-size: 12px;
     background: rgba(248, 113, 113, 0.12); border: 1px solid rgba(248, 113, 113, 0.3); color: #fecaca; }
+  .sheet-row b.warn { color: var(--warn); }
+  .sheet-row b.bad { color: var(--danger); }
   .sheet-hint { margin: 0; font-size: 11.5px; color: var(--muted-3, var(--muted-2)); line-height: 1.5; }
   .sheet-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 2px; }
   .probe-out { display: flex; flex-direction: column; gap: 8px; border-top: 1px solid var(--line-soft); padding-top: 10px; }
@@ -550,6 +552,8 @@
       sourcePlaylistFile: 'প্লেলিস্ট ফাইল',
       downloadM3u: 'M3U ডাউনলোড',
       playlistOff: 'বন্ধ',
+      playlistFallback: 'বিকল্প পথ',
+      playlistFailed: 'লেখা যাচ্ছে না',
       syncedCachedToast: 'সিঙ্ক হয়নি — সংরক্ষিত কপি চলছে ({message})',
       sourceSync: 'এখনই সিঙ্ক',
       sourceProbe: 'সংযোগ পরীক্ষা',
@@ -645,6 +649,8 @@
       sourcePlaylistFile: 'Playlist file',
       downloadM3u: 'Download M3U',
       playlistOff: 'off',
+      playlistFallback: 'fallback path',
+      playlistFailed: 'write failed',
       syncedCachedToast: 'Sync failed — serving the cached list ({message})',
       sourceSync: 'Sync now',
       sourceProbe: 'Test connection',
@@ -1381,9 +1387,19 @@
       const fileName = String(playlist.file || '').split('/').pop();
       els.sheetPlaylist.textContent = `${fileName} · ${playlist.channels} · ${fmtTime(playlist.generatedAt)}`;
       els.sheetPlaylist.title = playlist.file || '';
+      els.sheetPlaylist.classList.toggle('bad', Boolean(playlist.error));
+      els.sheetPlaylist.classList.toggle('warn', !playlist.error && Boolean(playlist.fallback));
+      if (playlist.error) {
+        els.sheetPlaylist.textContent = t('playlistFailed');
+        els.sheetPlaylist.title = playlist.error;
+      } else if (playlist.fallback) {
+        els.sheetPlaylist.textContent += ` · ${t('playlistFallback')}`;
+        els.sheetPlaylist.title = playlist.warning || playlist.file || '';
+      }
     } else {
       els.sheetPlaylist.textContent = t('playlistOff');
       els.sheetPlaylist.title = '';
+      els.sheetPlaylist.classList.remove('bad', 'warn');
     }
     if (src.syncError) {
       els.sheetError.hidden = false;
